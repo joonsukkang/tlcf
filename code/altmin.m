@@ -1,4 +1,4 @@
-function [l2norm_last] = altmin(m,p,n,s,T,a)
+function [l2norm] = altmin(m,p,n,s,T,a)
 
     theta = transpose(repelem([1, -1, 0], [s/2, s/2, p-s]));
     Sigma_small = [1, a; a, 1];
@@ -39,6 +39,4 @@ function [l2norm_last] = altmin(m,p,n,s,T,a)
         % save L2 error for theta hat
         l2norm(j) = norm(theta-theta_hat);
     end
-
-    l2norm_last = l2norm(end);
 end

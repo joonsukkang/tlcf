@@ -17,15 +17,29 @@ errors(:,3) = repelem(1:nrep, length(nvals)*length(mvals));
 % run for p=100
 p = 100;
 for i = 1:length(errors)
-    errors(i,4) = altmin(errors(i,2),p,errors(i,1),20,10,0.9);
+    ans_temp = altmin(errors(i,2),p,errors(i,1),20,10,0.9);
+    errors(i,4) = ans_temp(end);
 end
 writematrix(errors,'../output/errors_p100.csv');
 
 % run for p=1000
 p = 1000;
 errors_p1000 = errors;
+errors_p1000(:,4) = 0;
 
 for i = 1:length(errors_p1000)
-    errors_p1000(i,4) = altmin(errors_p1000(i,2),p,errors_p1000(i,1),20,10,0.9);
+    ans_temp = altmin(errors_p1000(i,2),p,errors_p1000(i,1),20,10,0.9);
+    errors_p1000(i,4) = ans_temp(end);
 end
 writematrix(errors_p1000,'../output/errors_p1000.csv');
+
+% run for p=100, m=14
+nrep=100;
+T=10;
+errors_p100_m14 = zeros(length(nvals)*nrep,T+1);
+errors_p100_m14(:,1) = repelem(nvals, nrep);
+for i = 1:length(errors_p100_m14)
+    errors_p100_m14(i,2:(T+1)) = altmin(14,100,errors_p100_m14(i,1),20,T,0.9);
+end
+writematrix(errors_p100_m14,'../output/errors_p100_m14.csv');
+
