@@ -1,0 +1,262 @@
+---
+title: "Simulation Analysis of Noisy Paramter Model"
+author: "Joonsuk Kang"
+date: "2020-03-28"
+output: workflowr::wflow_html
+editor_options:
+  chunk_output_type: console
+---
+
+**For model description, check [altmin_ideas](altmin_ideas.html)**
+
+
+# Estimation Procedure
+
+### Framework
+
+$Y_0 =X_0\beta+\epsilon_0 \sim N(X_0\beta, \sigma^2 I_n)$
+
+$Y_k=X_k\beta +X_k\delta_k+\epsilon_k\sim^{iid} N(X_k\beta, \gamma^2X_k BB^TX_k^T+\sigma^2I_n)$
+
+For each $k=1,\dots,K$, there is one realization $\delta_k$, which creates correlations within $Y_k$. If $\delta_k=0$ (or $\gamma=0$) for all $k$, then this problem shrinks into a case where the simulations follow exactly same distribution as the observation data. We then just need to concatenate all the data.
+
+With the existence of $\delta_k$, however, we could have more variance in estimating $\beta$ if we just concatenate data and run normal estimation procedure. Luckily, as long as the $\beta+\delta_k$ has the same support and sign as in $\beta$, we can at least be more confident in support recovery.
+
+The performance of estimatess can be evaluated in two hierarchical criteria: support recovery (i.e. which coordinates are nonzero) and size recovery (i.e. how close $\beta_j$ and $\hat{\beta}_j$); the support recover is a more fundamental problem than size recovery.
+
+
+### Three-step estimation procedure
+
+Here, I propose a simple way to leverage simulation data: mainly in support recovery and also in size recovery.
+
+
+1. Concatenate all data and run lasso or hard thresholding pursuit (HTP)
+2. Restrict the design matrix to the support estimated in (1): from a $n\times p$ matrix into a $n \times s$ matrix. (Suppose we have $s<n$.) Run OLS for observation data and for each $k=1,\dots,K$ seperately.  
+3. Combine $\hat{\beta}_0, \hat{\beta}_1,\dots,\hat{\beta}_K$ to construct a final estimate $\hat{\beta}$.
+
+For step 1, lasso worked better than HTP (see the simulation study results below). To use lasso in support recovery, we ran lasso and then collected first $s$ predictors which became nonzero as the tuning parameter gradually decreases.
+
+
+For the 3rd step, the OLS estimator follows a distribution $\hat{\beta}_0=(X_0^TX_0)^{-1}X_0^TY_0=(X_0^TX_0)^{-1}X_0^T(X_0\beta+\epsilon_0)=\beta+(X_0^TX_0)^{-1}X_0^T\epsilon_0 \sim N(\beta,\sigma^2(X_0^TX_0)^{-1})$ and
+
+$\hat{\beta}_k=(X_k^TX_k)^{-1}X_k^TY_k=(X_k^TX_k)^{-1}X_k^T(X_k\beta+X_k\delta_k+\epsilon_k)=\beta+\delta_k+(X_k^TX_k)^{-1}X_k^T\epsilon_k \sim N(\beta,\gamma^2BB^T+\sigma^2(X_k^TX_k)^{-1})$. 
+
+So we have $K+1$ independent estimators of $\beta$ with different precisions. Given that the distribution of X is similar, the variance of estimator from simulation is greater than the variance of estimator from observation data. 
+
+Suppose $X_k^TX_k$ is identical for all $k$. If we first combine $\hat{\beta}_1,\dots,\hat{\beta}_K$ to have $\hat{\beta}_S=\frac{1}{K}\sum_{k=1}^K \hat{\beta}_k$, then the estimator $\hat{\beta}_S \sim N(\beta,\frac{\gamma^2}{K}BB^T+\frac{\sigma^2}{K}(X^TX)^{-1})$. Compare this variance to the variance of $\hat{\beta}_0$: $\sigma^2(X^TX)^{-1}$. As $K$ increases, the combined estimator from simulation data becomes more precise, even than the estimator from the observation data. One way to combine all the estimators is to set $\hat{\beta}=\alpha\hat{\beta}_0+(1-\alpha)\hat{\beta}_S$ for some $\alpha \in [0,1]$. Then $\hat{\beta}\sim N(\beta,\alpha^2\sigma^2(X^TX)^{-1}+(1-\alpha)^2[\frac{\gamma^2}{K}BB^T+\frac{\sigma^2}{K}(X^TX)^{-1}])=N(\beta,(\alpha^2+\frac{(1-\alpha)^2}{K})\sigma^2(X^TX)^{-1}+\frac{(1-\alpha)^2}{K}\gamma^2BB^T)$.
+
+If $K$ is very small, it may be optimal to set $\alpha$ close to 0. If $K$ is large enough, letting $\alpha$ close to 1 would be optimal.
+
+
+# Simulation Study
+
+### Setting
+
+The code used for simulation is: 
+
++ [tl_1.m](https://github.com/joonsukkang/tlcf/tree/master/code/tl_1.m)
++ [n_support_recovery.m](https://github.com/joonsukkang/tlcf/tree/master/code/n_support_recovery.m)
+
+Parameters
+
++ number of predictors: $p=100$
++ number of nonzero entries in beta: $s=10$; all the 10 nonzero values are set as $1$'s; the support was chosen at random
++ $\gamma=0.1$
++ number of observation (observation data): $n \in \{10,20,30,50,100\}$
++ number of simulation data: $K \in \{1,2,3,5,10,20,30\}$
++ for each $(n,K)$ pair, 100 replications are made
+
++ All elements of $X$ and $\epsilon$ are drawn from iid $N(0,1)$.
+
+
+### Support Recovery
+
+The number of recovered support out of 10 (the truth) are shown below. Each point in the figure corresponds to one replication of the (n,K) pair; there are 100 points per small plot. The results are shown separately for lasso and HTP.
+
+First of all, lasso (matlab built-in function) performs much better than HTP (matlab code written by Simon Foucart). HTP's performance does not improve with increasing $n$ and seems to get worse with increasing $K$. This does not align with our intuition; the result may be due to inefficient implementation or bug in my code (?). In the following analysis, we will focus on the result based on lasso. Also, we come back to R and use the lasso implementation in `glmnet`.
+
+**Findings** (with lasso results)
+
+As expected, using concatenated data almost always shows better performance, even with $k=1$. The improvement is greater in small $n$ because the observation data only lacks enough sample size. Another point to note is that the increase of $K$ has heterogeneous effect on the estimation depending on $n$, because the size of additional data points is $n$. For example, see cases with $K \in \{1,2,3\}$ and $n\in \{10,20\}$. When $n=20$, the increase in K from 1 to 2 and 3 has greater effect than when $n=10$.
+
+
+```{r}
+library(tidyverse)
+df.sr <- read_csv("output/n_support_recovery_p100.csv", col_names = FALSE)
+colnames(df.sr) <- c("n", "K", "iter", "n_HTP", "n_HTP_0", "n_lasso", "n_lasso_0")
+
+df.sr %>%
+  ggplot(aes(x=jitter(n_lasso_0), y=jitter(n_lasso)))+
+  geom_point(alpha=0.1)+geom_abline(slope=1,intercept=0,alpha=0.3)+
+  facet_grid(n~K, labeller=labeller(n=label_both, K=label_both))+
+  scale_x_continuous(breaks=c(0,5,10), limits = c(-1,11))+
+  scale_y_continuous(breaks=c(0,5,10), limits = c(-1,11))+
+  ggtitle("Number of recovered support: Lasso")+
+  xlab("using observation data only")+ylab("using concatenated data")
+
+df.sr %>%
+  ggplot(aes(x=jitter(n_HTP_0), y=jitter(n_HTP)))+
+  geom_point(alpha=0.1)+geom_abline(slope=1,intercept=0,alpha=0.3)+
+  facet_grid(n~K, labeller=labeller(n=label_both, K=label_both))+
+  scale_x_continuous(breaks=c(0,5,10), limits = c(-1,11))+
+  scale_y_continuous(breaks=c(0,5,10), limits = c(-1,11))+
+  ggtitle("Number of recovered support: HTP")+
+  xlab("using observation data only")+ylab("using concatenated data")
+```
+
+
+
+### Size Recovery
+
+
+```{r}
+library(glmnet); library(tictoc)
+
+# set parameters
+set.seed(773)
+p=100; s=10; gamma=0.1
+
+# function for  simulation
+#################################################################
+calc_l2 <- function(n, K, p=100, s=10, gamma=0.1){
+  
+  beta <- rep(0,p); support <- sort(sample(p,s)); beta[support] <- 1
+  
+  # generate data
+  X <- array(rnorm(n*p*(K+1)), dim=c(n,p,K+1))
+  epsilon <- array(rnorm(n*p*(K+1)), dim=c(n,1,K+1))
+  delta <- array(0, dim=c(p,K+1))
+  for (i in 1:K){
+    delta[,i+1] <- gamma*diag(beta) %*% rnorm(n=p, mean=0, sd=1)
+  }
+  Y <- array(0,dim=c(n,1,K+1))
+  for (i in 1:(K+1)){
+    Y[,,i] <- X[,,i] %*% (beta+delta[,i])+epsilon[,,i]
+  }
+  # concatenate
+  Xcon <- array(0, dim=c(n*(K+1),p))
+  Ycon <- array(0, dim=c(n*(K+1),1))
+  for (i in 1:(K+1)){
+    Xcon[((i-1)*n+1):(i*n),] <- X[,,i]
+    Ycon[((i-1)*n+1):(i*n),] <- Y[,,i]
+  }
+  
+  # run lasso
+  fit0 <- glmnet(x=X[,,1], y=Y[,,1])
+  fit <- glmnet(x=Xcon, y=Ycon)
+  
+  # find the first s predictors which became nonzero with gradually relaxing constraints
+  support_est <- sort(as.numeric(substr(names(sort(rowSums(fit$beta !=0), 
+                                                   decreasing=TRUE)[1:s]),2,100)))
+  support_est0 <- sort(as.numeric(substr(names(sort(rowSums(fit0$beta !=0),
+                                                    decreasing=TRUE)[1:s]),2,100)))
+  
+  # number of correct supports by lasso + concatenated data
+  n_correct <- length(intersect(support, support_est)) 
+  
+  # estimator 1) lasso + concat + CV
+  cv.fit <- cv.glmnet(Xcon[,support_est], Ycon, type.measure = "mse", nfolds = 10)
+  cv.fit$lambda.min
+  beta_est1 <- rep(0,p)
+  beta_est1[support_est] <- coef(cv.fit, s = "lambda.min")[-1] # -1 excludes intercept
+  
+  # estimator 2) weighted average of OLS estimators
+  beta_est2.0 <- rep(0,p)
+  beta_est2.0[support_est] <- coef(lm(Y[,,1]~X[,support_est,1]))[-1]
+  
+  beta_est2.s <- array(0,dim=c(p,K))
+  for (i in 1:K){
+    beta_est2.s[support_est,i] <- coef(lm(Y[,,i+1]~X[,support_est,i+1]))[-1]
+  }
+  beta_est2.s <- rowMeans(beta_est2.s)
+  
+  # calculate L2 error
+  l2.est1 <- norm(matrix(beta-beta_est1), type="F")
+  alpha.grid <- seq(0,1,by=0.01)
+  l2.est2 <- rep(0,length(alpha.grid))
+  for (i in 1:length(alpha.grid)){
+    alpha <- alpha.grid[i]
+    l2.est2[i] <- norm(matrix(beta-(alpha*beta_est2.0+(1-alpha)*beta_est2.s)), type="F")
+  }
+  
+  l2 <- c(l2.est1, l2.est2)
+  
+  return(l2)
+}
+
+
+#################################################################
+
+# make grid
+n.grid <- c(20,30,50,100)
+K.grid <- c(1,2,3,5,10,20,30)
+iter <- 1:50
+l2.grid <- expand_grid(n.grid, K.grid, iter) 
+
+# run over the grid
+tic()
+for (i in 1:nrow(l2.grid)){
+  l2.grid[i,4:105] <- calc_l2(n=l2.grid$n.grid[i],K=l2.grid$K.grid[i])
+}
+toc() # 109.222 sec elapsed
+```
+
+Here, we use the estimated support from lasso and concatenated data, and compare two type of estimators. The first estimator is the lasso estimator with the concatenated data (equal weights for observation and simulation data) and the tuning parameter is chosen by cross validation. The second estimator is a sequence of estimators with $\hat{\beta}=\alpha\hat{\beta}_0+(1-\alpha)\hat{\beta}_s$ where $\hat{\beta}_0$ is the OLS estimator from the observed sample and $\hat{\beta}_s$ is the average of the OLS estimators from simulated samples; $\alpha=0,0.01,0.02,\dots,0.99,1$.$\alpha=\frac{1}{K+1}$ corresponds to the case of equal-weight averaging of all the $K+1$ OLS estimators.
+
+L2 norm of the estimators are shown below. Each line in the figure corresponds to one sequence of replication of the (n,K) pair; there are 50 liens per small plot. The leftmost point corresponds to $\hat{\beta}_s$ ($\alpha=0$) and rightmost $\hat{\beta}_0$ ($\alpha=1$). The blue thick line shows average L2error wihtin each plot with the blue dot the lowest average L2 error point. And the vertical red lines are alpha values corresponding to $\alpha=\frac{1}{K+1}$: equal weight over observation data nad K simulations. 
+
+Empirically, for small $n$, equal weight is nearly optimal: blue dots are almost always on the red line. But for large $n$ and small $k$, when $\hat{\beta}_0$ is farily precise but $\hat{\beta}_s$ could have large variance, underweighting simulation data (greater $\alpha$) is optimal. 
+
+
+```{r}
+data.frame(n=rep(l2.grid$n.grid, times=101),
+           K=rep(l2.grid$K.grid, times=101),
+           iter=rep(l2.grid$iter, times=101),
+           alpha=rep(seq(0,1,by=0.01), each=nrow(l2.grid)),
+           l2error = unlist(l2.grid[,5:105], use.names=FALSE)
+           ) -> df.temp
+df.temp %>% group_by(n,K,alpha) %>% 
+  summarise(meanl2=mean(l2error)) -> df.temp.meanl2
+df.temp.meanl2 %>% group_by(n,K) %>% arrange(meanl2) %>% slice(1)  -> df.temp.bestl2
+df.temp %>%
+  ggplot()+geom_line(aes(x=alpha, y=l2error, group=iter), alpha=0.1)+
+  geom_line(data=df.temp.meanl2, aes(x=alpha, y=meanl2), col='blue')+
+  geom_point(data=df.temp.bestl2, aes(x=alpha, y=meanl2), col='blue')+
+  facet_grid(n~K, labeller=labeller(n=label_both, K=label_both), scales="free_y")+
+  scale_x_continuous(breaks=c(0,0.5,1))+scale_y_log10()+
+  geom_vline(aes(xintercept=1/(K+1), col="equal weight"))+
+  ggtitle("L2 error")
+```
+
+The figure below highlights the optimal alpha (blue dots in the figure above) with respect to the values of $n$ and $K$. The purple line corresponds to an equal weight line ($\alpha=\frac{1}{K+1}$). This figure confirms the trend that underweighting simualation data is optimal and the degree of underweighting should be greater for 'large n, small K' situation.
+
+```{r}
+df.temp.bestl2 %>% ungroup() %>% mutate(n=factor(n)) %>%
+  ggplot()+geom_line(aes(x=K, y=alpha, group=n, col=n))+
+  geom_line(aes(x=K, y=1/(K+1), col="equal weight"))
+```
+
+Surprisingly and sadly, the lasso (from 10-fold cross validation) has almost identical or slightly better performance than the weighted OLS estimator strategy (with empirically optimal alpha values). 
+
+```{r}
+l2.grid[,1:4] %>%
+  rename(n=n.grid, K=K.grid, lasso=V4) -> df.temp2a
+
+df.temp.bestl2 %>% select(-meanl2) %>% 
+  inner_join(df.temp, by=c('n','K','alpha')) %>%
+  rename(bestalpha=l2error) %>% select(-alpha) %>%
+  inner_join(df.temp2a, by=c('n','K','iter')) %>%
+  ggplot()+geom_point(aes(x=bestalpha, y=lasso), alpha=0.1)+
+  geom_abline(slope=1,intercept = 0)+ scale_x_log10()+scale_y_log10()+
+  facet_grid(n~K, labeller=labeller(n=label_both, K=label_both), scales="free")
+```
+
+One possibly interesting task would be to check similar empirical optimal weighting scheme with lasso. `glmnet` function has a easy weighting implementation. It taks a little time to run, and we expect a similar pattern there.
+
+
+
+# Further works
+
++ A more elaborate and efficient algorithm would be possible. Especially, we should exploit the structure that the parameter $\beta$ also governs the variance structure: $\gamma^2X_kBB^TX_k^T$. Find MLE?
++ It may be meaningful to establish error bounds for this procedure or weighted lasso, or any other efficient algorithm under the specified noisy parameter model.
++ We assumed the sparsity level $s$ is knwon. We can relax this assumption.

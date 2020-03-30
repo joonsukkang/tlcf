@@ -1,0 +1,249 @@
+---
+title: "Simulation Analysis of Noisy Paramter Model: shared noise parameter"
+author: "Joonsuk Kang"
+date: "2020-03-28"
+output: workflowr::wflow_html
+editor_options:
+  chunk_output_type: console
+---
+
+**For model description, check [altmin_ideas](altmin_ideas.html)**
+
+**When parameter noise is shared for all the simulations: $\delta_1=\delta_2,\dots,\delta_K$**
+
+Simulation result with non-shared, simulation-specific noise parameter $\delta_k$: [noisyparam_sim](noisyparam_sim.html)
+
+
+
+# Simulation Study
+
+
+```{r}
+library(glmnet); library(tictoc); library(tidyverse)
+
+# set parameters
+set.seed(773)
+p=100; s=10; gamma=0.1
+
+# function for  simulation
+#################################################################
+calc_l2 <- function(n, K, p=100, s=10, gamma=0.1){
+  
+  beta <- rep(0,p); support <- sort(sample(p,s)); beta[support] <- 1
+  
+  # generate data
+  X <- array(rnorm(n*p*(K+1)), dim=c(n,p,K+1))
+  epsilon <- array(rnorm(n*p*(K+1)), dim=c(n,1,K+1))
+  delta <- array(0, dim=c(p,K+1))
+  delta[,2] <- gamma*diag(beta) %*% rnorm(n=p, mean=0, sd=1)
+  
+  if(K>1){for (i in 3:(K+1)){  delta[,i] <-   delta[,2]}}
+  Y <- array(0,dim=c(n,1,K+1))
+  for (i in 1:(K+1)){
+    Y[,,i] <- X[,,i] %*% (beta+delta[,i])+epsilon[,,i]
+  }
+  # concatenate
+  Xcon <- array(0, dim=c(n*(K+1),p))
+  Ycon <- array(0, dim=c(n*(K+1),1))
+  for (i in 1:(K+1)){
+    Xcon[((i-1)*n+1):(i*n),] <- X[,,i]
+    Ycon[((i-1)*n+1):(i*n),] <- Y[,,i]
+  }
+  
+  # run lasso
+  fit0 <- glmnet(x=X[,,1], y=Y[,,1])
+  fit <- glmnet(x=Xcon, y=Ycon)
+  
+  # find the first s predictors which became nonzero with gradually relaxing constraints
+  support_est <- sort(as.numeric(substr(names(sort(rowSums(fit$beta !=0), 
+                                                   decreasing=TRUE)[1:s]),2,100)))
+  support_est0 <- sort(as.numeric(substr(names(sort(rowSums(fit0$beta !=0),
+                                                    decreasing=TRUE)[1:s]),2,100)))
+  
+  # number of correct supports by lasso + concatenated data
+  n_correct <- length(intersect(support, support_est)) 
+  n_correct0 <- length(intersect(support, support_est0)) 
+  
+  # estimator 1) lasso + concat + CV
+  cv.fit <- cv.glmnet(Xcon[,support_est], Ycon, type.measure = "mse", nfolds = 10)
+  beta_est1 <- rep(0,p)
+  beta_est1[support_est] <- coef(cv.fit, s = "lambda.min")[-1] # -1 excludes intercept
+  
+  # estimator 2) weighted average of OLS estimators
+  beta_est2.0 <- rep(0,p)
+  beta_est2.0[support_est] <- coef(lm(Y[,,1]~X[,support_est,1]))[-1]
+  
+  beta_est2.s <- rep(0,p)
+  beta_est2.s[support_est] <- coef(lm(Ycon[(n+1):(n*(K+1)),]~Xcon[(n+1):(n*(K+1)),support_est]))[-1]
+  
+  # calculate L2 error
+  l2.est1 <- norm(matrix(beta-beta_est1), type="F")
+  alpha.grid <- seq(0,1,by=0.01)
+  l2.est2 <- rep(0,length(alpha.grid))
+  for (i in 1:length(alpha.grid)){
+    alpha <- alpha.grid[i]
+    l2.est2[i] <- norm(matrix(beta-(alpha*beta_est2.0+(1-alpha)*beta_est2.s)), type="F")
+  }
+  
+  out.list = list(n_correct=c(n_correct0, n_correct),
+                  l2=c(l2.est1, l2.est2))
+  
+  return(out.list)
+}
+
+
+#################################################################
+
+# make grid
+n.grid <- c(20,30,50,100)
+K.grid <- c(1,2,3,5,10,20,30)
+iter <- 1:50
+l2.grid <- expand_grid(n.grid, K.grid, iter) 
+n_correct.grid <- expand_grid(n.grid, K.grid, iter) 
+
+
+# run over the grid
+tic()
+for (i in 1:nrow(l2.grid)){
+  l2eval <- calc_l2(n=l2.grid$n.grid[i],K=l2.grid$K.grid[i])
+  n_correct.grid[i,4:5] <- l2eval$n_correct
+  l2.grid[i,4:105] <- l2eval$l2
+}
+toc() # 101.402 sec elapsed
+```
+
+
+### Support Recovery
+
+Almost identical to the support recovery result in the general case with simulation run-specific $\delta_k$
+
+```{r}
+data.frame(n_correct.grid) -> df.sr
+colnames(df.sr) <- c('n','K', 'iter', 'n_correct0', 'n_correct')
+
+df.sr %>%
+  ggplot(aes(x=jitter(n_correct0), y=jitter(n_correct)))+
+  geom_point(alpha=0.1)+geom_abline(slope=1, intercept=0, alpha=0.3)+
+  facet_grid(n~K, labeller=labeller(n=label_both, K=label_both))+
+  scale_x_continuous(breaks=c(0,5,10), limits = c(-1,11))+
+  scale_y_continuous(breaks=c(0,5,10), limits = c(-1,11))+
+  ggtitle("Number of recovered support: Lasso")+
+  xlab("using observation data only")+ylab("using concatenated data")
+```
+
+
+### Size Recovery
+
+The optimal weighting scheme is drastically different here. For small $n$, due to the intrinsic high variability in the estimator only based on observation data, the information based on simulation matters much. The optimal is almost identical to equal weighting when $n=20$. However, for large enough $n$, the information from simulation is less beneficial. That's because as $n$ increases, we can have more confidence that $\hat{\beta}_0$ is close to the true $\beta$, whereas we know that as the one realization of $\delta$ governs the whole simulation data, the simulation-based estimator $\hat{\beta}_s$ would converge to $\beta+\delta$, which has a distribution $N(\beta,\gamma BB^T)$. Thus, even if $K$ is extremely high, it has only a marginal piece of information about the value of $\beta$.
+
+
+
+```{r}
+data.frame(n=rep(l2.grid$n.grid, times=101),
+           K=rep(l2.grid$K.grid, times=101),
+           iter=rep(l2.grid$iter, times=101),
+           alpha=rep(seq(0,1,by=0.01), each=nrow(l2.grid)),
+           l2error = unlist(l2.grid[,5:105], use.names=FALSE)
+           ) -> df.temp
+df.temp %>% group_by(n,K,alpha) %>% 
+  summarise(meanl2=mean(l2error)) -> df.temp.meanl2
+df.temp.meanl2 %>% group_by(n,K) %>% arrange(meanl2) %>% slice(1)  -> df.temp.bestl2
+df.temp %>%
+  ggplot()+geom_line(aes(x=alpha, y=l2error, group=iter), alpha=0.1)+
+  geom_line(data=df.temp.meanl2, aes(x=alpha, y=meanl2), col='blue')+
+  geom_point(data=df.temp.bestl2, aes(x=alpha, y=meanl2), col='blue')+
+  facet_grid(n~K, labeller=labeller(n=label_both, K=label_both), scales="free_y")+
+  scale_x_continuous(breaks=c(0,0.5,1))+scale_y_log10()+
+  geom_vline(aes(xintercept=1/(K+1), col="equal weight"))+
+  ggtitle("L2 error")
+
+df.temp.bestl2 %>% ungroup() %>% mutate(n=factor(n)) %>%
+  ggplot()+geom_line(aes(x=K, y=alpha, group=n, col=n))+
+  geom_line(aes(x=K, y=1/(K+1), col="equal weight"))
+```
+
+
+Likewise, lasso performs impressively.
+
+```{r}
+l2.grid[,1:4] %>%
+  rename(n=n.grid, K=K.grid, lasso=V4) -> df.temp2a
+
+df.temp.bestl2 %>% select(-meanl2) %>% 
+  inner_join(df.temp, by=c('n','K','alpha')) %>%
+  rename(bestalpha=l2error) %>% select(-alpha) %>%
+  inner_join(df.temp2a, by=c('n','K','iter')) %>%
+  ggplot()+geom_point(aes(x=bestalpha, y=lasso), alpha=0.1)+
+  geom_abline(slope=1,intercept = 0)+ scale_x_log10()+scale_y_log10()+
+  facet_grid(n~K, labeller=labeller(n=label_both, K=label_both), scales="free")
+```
+
+
+# Appendix
+### Comparison: [lasso + concat + CV] vs [lasso + concat + CV + alpha weighting]
+
+```{r, eval=FALSE}
+library(glmnet); library(tictoc)
+
+# set parameters
+set.seed(773)
+p=100; s=10; gamma=0.1
+
+# function for  simulation
+#################################################################
+calc_l2 <- function(n, K, p=100, s=10, gamma=0.1){
+  
+  beta <- rep(0,p); support <- sort(sample(p,s)); beta[support] <- 1
+  
+  # generate data
+  X <- array(rnorm(n*p*(K+1)), dim=c(n,p,K+1))
+  epsilon <- array(rnorm(n*p*(K+1)), dim=c(n,1,K+1))
+  delta <- array(0, dim=c(p,K+1))
+  delta[,2] <- gamma*diag(beta) %*% rnorm(n=p, mean=0, sd=1)
+  
+  if(K>1){for (i in 3:(K+1)){  delta[,i] <-   delta[,2]}}
+  Y <- array(0,dim=c(n,1,K+1))
+  for (i in 1:(K+1)){
+    Y[,,i] <- X[,,i] %*% (beta+delta[,i])+epsilon[,,i]
+  }
+  # concatenate
+  Xcon <- array(0, dim=c(n*(K+1),p))
+  Ycon <- array(0, dim=c(n*(K+1),1))
+  for (i in 1:(K+1)){
+    Xcon[((i-1)*n+1):(i*n),] <- X[,,i]
+    Ycon[((i-1)*n+1):(i*n),] <- Y[,,i]
+  }
+
+  
+  # calculate L2 error
+  alpha.grid <- seq(0,1,by=0.01)
+  l2.est <- rep(0,length(alpha.grid))
+  for (i in 1:length(alpha.grid)){
+    alpha <- alpha.grid[i]
+      fit <- cv.glmnet(x=Xcon, y=Ycon, type.measure="mse", nfolds=10,
+                weights=c(rep(1,n),rep(alpha,n*K)))
+      beta_est <- coef(fit, s = "lambda.min")[-1]
+    l2.est[i] <- norm(matrix(beta-beta_est), type="F")
+  }
+
+  return(l2.est)
+}
+
+
+#################################################################
+
+# make grid
+n.grid <- c(20,30,50,100)
+K.grid <- c(1,2,3,5,10,20,30)
+iter <- 1:50
+l2.grid <- expand_grid(n.grid, K.grid, iter) 
+
+
+# run over the grid
+tic()
+for (i in 202:nrow(l2.grid)){
+  l2.grid[i,4:104] <- calc_l2(n=l2.grid$n.grid[i],K=l2.grid$K.grid[i])
+}
+toc() # 
+```
+

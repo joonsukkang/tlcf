@@ -1,0 +1,131 @@
+---
+title: "AltMin Ideas for Obs+Sim Data "
+author: "Joonsuk Kang"
+date: "2020-03-29"
+output: workflowr::wflow_html
+editor_options:
+  chunk_output_type: console
+---
+
+
+# Paper
+
++ Chen and Banerjee (2018) *An Improved Analysis of Alternating Minimization for Structured Multi-Response Regression*
+
+
+### Model
+
+\[
+y_i=x_i\beta+\epsilon_i \text{ and  } \epsilon_i =\Sigma^{1/2}\eta_i
+\]
+where $y_i\in\mathbb{R}^{m\times1}$, $x_i \in \mathbb{R}^{m\times p}$, $\beta\in \mathbb{R}^{p\times 1}$, $\Sigma\in \mathbb{R}^{m\times m}$, $\eta_i \sim N(0,I_m)$, and $\epsilon_i =\Sigma^{1/2}\eta_i \sim N(0,\Sigma)$.
+
+The correalted noise among response $y_i$ is the key feature. Note that $\eta_i$'s are independent, thus also are $y_i$'s. 
+
+### Two unknowns
+
+The distribution of y: $y_i ~ \sim N(x_i\beta,\sigma^2\Sigma)$. Reararnging $\Sigma$, we get $\Sigma^{-1/2}y_i ~ \sim N(x_i\beta,\sigma^2I_m)$. Hence, the likelihood: $l(\beta,\Sigma)=\frac{1}{2n}\sum_{i=1}^n ||\Sigma^{-1/2}(y_i-x_i\beta)||_2^2+\frac{1}{2}\log |\Sigma|$. With a shape constraint $f(\beta)\leq \lambda$, we want to obtain the constrained MLE.
+
+AltMin algorithm iteratively updates $\beta$ and $\Sigma$ to get the solution. 
+
+$\hat{\Sigma}=\frac{1}{n}\sum_{i=1}^n (y_i-x_i\hat{\beta})(y_i-x_i\hat{\beta})^T$ and
+
+$\hat{\beta}=argmin_{\beta} \frac{1}{2n}\sum_{i=1}^n ||\hat{\Sigma}^{-1/2}(y_i-x_i\beta)||_2^2$ s.t. $f(\beta)\leq \lambda$. This constrained least squares can be solved with lasso or hard thresholding pursuit.
+
+### Statistical Guarantee
+
+The authors proved that $||\hat{\beta}_T-\beta||\leq e_{min}+\rho_n^T(||\hat{\beta}_0-\beta||-e_{min})$ where $e_{min}=O(\frac{w(C)+m}{\sqrt{n}})$ with arbitrary initialization and $O(\frac{w(C)}{\sqrt{n}})$ with good initialization.
+
+
+
+<br />   
+
+# Ideas for Observation + Simulation Data
+
+### Spatial correlation model
+
+The climate is a spatial process. So it is natural to model spatially correlated errors, which fits well with this framework.
+
+**Baseline**
+
+Suppose we want to predict temperature for L locations and $Y_i=\begin{pmatrix} Y_{i1} \\ Y_{i2} \\ \dots \\Y_{iL}\end{pmatrix} \in \mathbb{R}^L$ for $i=1,2,\dots,n$. Suppose we have $p$ predictors and $X_i = \begin{pmatrix} X_{i1} \\ X_{i2} \\ \dots \\ X_{iL}  \end{pmatrix} \in \mathbb{R}^{L\times p}$. Then we have a model $Y_i=X_i\beta+\epsilon_i$ where $\beta\in\mathbb{R}^p$ and $\epsilon_i=\Sigma^{1/2}\eta_i$. Using $Y_i \sim N(X_i\beta,\sigma^2\Sigma)$. If the simulation data follows the same distribution, the rate becomes $O(\frac{w(c)+L}{\sqrt{n(K+1)}})$. Thus by using simulation data, we can improve our rate, especially when $L>n$. 
+
+
+**Relaxation: Different parameters ($\beta$) for each location**
+
+The model's assumption that the $L$ locations share an identical $\beta$ can be readily relaxed by letting $Y_i=X_iB+\epsilon_i$ where $X_i=\begin{pmatrix} X_{i1} & 0 & 0 & \dots\\ 0 & X_{i2} & 0 & \dots\\ 0 & 0 & X_{i3} & \dots\\ \dots &&& X_{iL}\end{pmatrix} \in \mathbb{R}^{L \times Lp}$ and $B=\begin{pmatrix} B_{1}\\ B_2 \\ \dots \\ B_L \end{pmatrix} \in \mathbb{R}^{Lp\times 1}$. The rate stays the same: $O(\frac{w(c)+m}{\sqrt{n(K+1)}})$.
+
+
+
+**Combined with multi-response grpah total variation (MultiGTV)**
+
+Further, we can combine this idea with **multi-response grpah total variation (MultiGTV)**. The AltMin algorithm has two steps: 1) update $\hat{\Sigma}=\frac{1}{n}\sum_{i=1}^n (Y_i-X_i\hat{B})(Y_i-X_i\hat{B})^T$ and 2) udpate $\hat{B}=argmin_\beta \frac{1}{2n}\sum_{i=1}^n ||\hat{\Sigma}^{-1/2}(Y_i-X_iB)||_2^2$ s.t. $f(\beta)\leq \lambda$. With this constraint term, we can utilize within-region GTV and group sparsity idea. 
+
+
+
+
+### Noisy parameter models 
+
+We can think of noisy parameter models where the observed data (and the underlying truth) follows $Y_0=X_0\beta+\epsilon_0$ and the simulation data follows $Y_k=X_k(\beta+\gamma_k)+\epsilon_k$ for $k=1,2,\dots,K$. If $\gamma_k \sim^{iid} F_\gamma$, then we have correlation shared within each simulation run $k$ and the number of observations sharing a correlation $m=n$, assuming $n$ is the size of observation data and also of each simulation data. Then, with aribitrary initialization, we have $e_{min}=O(\frac{w(c)+n}{\sqrt{K}})$. With this construction, we can benefit from more simulation runs, i.e. greater $K$. However, the rate became proportional to $n$ instead of $1/\sqrt{n}$. 
+
+Of course, we can enforce some structure on parameters and try to estimate them. One way is to assume that the support of $\gamma_k$ is equal to the support of $\beta$, i.e. if $\beta_j=0$, then $[\gamma_k]_j=0$. It would be worthy to prove a statistical bound for this pronblem, but this does not fit into the paper's framework.
+
+Another possible variation of the above model is to share a same noise parameter: $\delta=\delta_1=\dots,=\delta_K$. In this case, we have $e_{min}=O(\frac{w(c)+Kn}{\sqrt{1}})$ with aribitrary initialization. 
+
+Note that a model with noise parameter at the index ($i=1,2,\dots,n$) level, in which $\{[Y_1]_j, [Y_2]_j,\dots,[Y_K]_j\}$ are correlated, is not likely. That's because the iid assumption among observations within a simulation run implies interchangeability among indices. Therefore, enforcing a structure with respect to index seems not meaningful.
+
+
+
+
+**Observation Model**
+
+\[
+  Y_0=X_0\beta+\epsilon_0
+\]
+where $Y_0\in \mathbb{R}^{n}$, $X_0 \in \mathbb{R}^{n\times p}$, $\beta \in \mathbb{R}^p$, $\epsilon_0\in \mathbb{R}^n$.
+
+$\epsilon_0 \sim N(0,\sigma^2I_n)$; number of nonzero entries $||\beta||_0=s<p$.
+
+
+
+
+**Simulation Model**
+
+For $k=1,2,\dots,K$,
+\[
+Y_k=X_k(\beta+\delta_k)+\epsilon_k
+\]
+where $Y_k\in \mathbb{R}^{n}$, $X_k \in \mathbb{R}^{n\times p}$, $\beta \in \mathbb{R}^p$, $\delta_k\in\mathbb{R}^p$, $\epsilon_k\in \mathbb{R}^n$.
+
+$\epsilon_k \sim^{iid} N(0,\sigma^2I_n)$; $\delta_k=\gamma B \eta_k$ where $B=\begin{pmatrix} \beta_1 & 0 & 0 & \dots\\ 0 & \beta_2 & 0 & \dots\\ 0 & 0 & \beta_3 & \dots\\ \dots &&& \end{pmatrix}$ is a $p \times p$ matrix with diagnoal entries as the values of $\beta$, $\eta_k \sim^{iid} N(0,I_p)$. Equivalently, for $j=1,\dots,p$, $[\delta_k]_j=\gamma\beta_j N(0,1) \sim N(0,\gamma^2\beta_j^2)$.
+
+$[\delta_k]_j$ and $[\delta_k]_{j'}$ are independent; $\delta_k$ and $\delta_{k'}$ are independent; $\epsilon_k$ and $\delta_k$ are independent. 
+
+Note that the specification $\delta_k=\gamma B\eta_k$ ensures $support(\beta)=support(\delta_k)$ and for the nonzero coordinates, the size of deviation from $\beta$ is proportional to the size of $\beta$ elementwise. Also, $\gamma$ should be set sufficiently small to ensure that $sign(\beta+\delta_k)=sign(\beta)$. 
+
+Suppose we have a high-dimensional setting $p>n$. We want to leverage simulation data to solve this underdetermined estimation problem.
+
+To summarize, $Y_k=X_k\beta+\gamma X_kB\eta_k+\epsilon_k\sim N(X_k\beta,\gamma^2X_kBB^TX_k^T+\sigma^2I_n)$. A realization of $\delta_k$ makes correlation within each simulation $k$.
+
+
+**Simulation Data when all simulation runs share one noise parameter $\delta=\delta_1=\dots=\delta_K$**
+
+For $k=1,2,\dots,K$,
+\[
+Y_k=X_k(\beta+\delta)+\epsilon_k
+\]
+where $\delta=\gamma B \eta$ and $\eta\sim N(0,I_p)$ with $\eta \perp \epsilon_k$.
+
+We can concatenate simulation data matrices to compress notation: $Y_s=\begin{pmatrix} Y_1\\Y_2\\\dots\\ Y_K \end{pmatrix}$, $X_s=\begin{pmatrix} X_1\\X_2\\\dots\\ X_K \end{pmatrix}$, $\epsilon_s=\begin{pmatrix} \epsilon_1\\\epsilon_2\\\dots\\ \epsilon_K \end{pmatrix}$. The dimensions are $Y_s \in \mathbb{R}^{nK\times 1}$, $X_s \in \mathbb{R}^{nK\times p}$, $Y_s \in \mathbb{R}^{nK\times 1}$.
+
+The distribution of $Y_s=X_s(\beta+\delta)+\epsilon_s\sim N(X_s\beta,\gamma^2X_sBB^TX_s^T+\sigma^2I_n)$. A realization of $\delta$ makes correlation among all the simulation data.
+
+
+**Estimation**
+
+We would be able to device a alternating minimization algorithm to iteratively update $\beta$, $\gamma$, and $\sigma^2$. Maximizing the log likelihood with respect to $\beta$ seems tricky because it's also in the variance term ($B=diag(\beta)$).
+
+
+
+
+
