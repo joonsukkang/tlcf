@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+
+<meta name="author" content="Joonsuk Kang" />
+
+<meta name="date" content="2020-03-28" />
+
+<title>Simulation Analysis of Noisy Paramter Model</title>
+
+<script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="site_libs/bootstrap-3.3.5/css/cosmo.min.css" rel="stylesheet" />
+<script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<script src="site_libs/jqueryui-1.11.4/jquery-ui.min.js"></script>
+<link href="site_libs/tocify-1.9.1/jquery.tocify.css" rel="stylesheet" />
+<script src="site_libs/tocify-1.9.1/jquery.tocify.js"></script>
+<script src="site_libs/navigation-1.1/tabsets.js"></script>
+<link href="site_libs/highlightjs-9.12.0/textmate.css" rel="stylesheet" />
+<script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
+<link href="site_libs/font-awesome-5.1.0/css/all.css" rel="stylesheet" />
+<link href="site_libs/font-awesome-5.1.0/css/v4-shims.css" rel="stylesheet" />
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css">
+  pre:not([class]) {
+    background-color: white;
+  }
+</style>
+<script type="text/javascript">
+if (window.hljs) {
+  hljs.configure({languages: []});
+  hljs.initHighlightingOnLoad();
+  if (document.readyState && document.readyState === "complete") {
+    window.setTimeout(function() { hljs.initHighlighting(); }, 0);
+  }
+}
+</script>
+
+
+
+<style type="text/css">
+h1 {
+  font-size: 34px;
+}
+h1.title {
+  font-size: 38px;
+}
+h2 {
+  font-size: 30px;
+}
+h3 {
+  font-size: 24px;
+}
+h4 {
+  font-size: 18px;
+}
+h5 {
+  font-size: 16px;
+}
+h6 {
+  font-size: 12px;
+}
+.table th:not([align]) {
+  text-align: left;
+}
+</style>
+
+
+
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+code {
+  color: inherit;
+  background-color: rgba(0, 0, 0, 0.04);
+}
+img {
+  max-width:100%;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+.html-widget {
+  margin-bottom: 20px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+summary {
+  display: list-item;
+}
+</style>
+
+
+<style type="text/css">
+/* padding for bootstrap navbar */
+body {
+  padding-top: 51px;
+  padding-bottom: 40px;
+}
+/* offset scroll position for anchor links (for fixed navbar)  */
+.section h1 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h2 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h3 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h4 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h5 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h6 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.dropdown-submenu {
+  position: relative;
+}
+.dropdown-submenu>.dropdown-menu {
+  top: 0;
+  left: 100%;
+  margin-top: -6px;
+  margin-left: -1px;
+  border-radius: 0 6px 6px 6px;
+}
+.dropdown-submenu:hover>.dropdown-menu {
+  display: block;
+}
+.dropdown-submenu>a:after {
+  display: block;
+  content: " ";
+  float: right;
+  width: 0;
+  height: 0;
+  border-color: transparent;
+  border-style: solid;
+  border-width: 5px 0 5px 5px;
+  border-left-color: #cccccc;
+  margin-top: 5px;
+  margin-right: -10px;
+}
+.dropdown-submenu:hover>a:after {
+  border-left-color: #ffffff;
+}
+.dropdown-submenu.pull-left {
+  float: none;
+}
+.dropdown-submenu.pull-left>.dropdown-menu {
+  left: -100%;
+  margin-left: 10px;
+  border-radius: 6px 0 6px 6px;
+}
+</style>
+
+<script>
+// manage active state of menu based on current page
+$(document).ready(function () {
+  // active menu anchor
+  href = window.location.pathname
+  href = href.substr(href.lastIndexOf('/') + 1)
+  if (href === "")
+    href = "index.html";
+  var menuAnchor = $('a[href="' + href + '"]');
+
+  // mark it active
+  menuAnchor.parent().addClass('active');
+
+  // if it's got a parent navbar menu mark it active as well
+  menuAnchor.closest('li.dropdown').addClass('active');
+});
+</script>
+
+<!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "&#xe258;";
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+  background-color: transparent;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
+<!-- code folding -->
+
+
+
+<style type="text/css">
+
+#TOC {
+  margin: 25px 0px 20px 0px;
+}
+@media (max-width: 768px) {
+#TOC {
+  position: relative;
+  width: 100%;
+}
+}
+
+@media print {
+.toc-content {
+  /* see https://github.com/w3c/csswg-drafts/issues/4434 */
+  float: right;
+}
+}
+
+.toc-content {
+  padding-left: 30px;
+  padding-right: 40px;
+}
+
+div.main-container {
+  max-width: 1200px;
+}
+
+div.tocify {
+  width: 20%;
+  max-width: 260px;
+  max-height: 85%;
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+  div.tocify {
+    width: 25%;
+  }
+}
+
+@media (max-width: 767px) {
+  div.tocify {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+.tocify ul, .tocify li {
+  line-height: 20px;
+}
+
+.tocify-subheader .tocify-item {
+  font-size: 0.90em;
+}
+
+.tocify .list-group-item {
+  border-radius: 0px;
+}
+
+
+</style>
+
+
+
+</head>
+
+<body>
+
+
+<div class="container-fluid main-container">
+
+
+<!-- setup 3col/9col grid for toc_float and main content  -->
+<div class="row-fluid">
+<div class="col-xs-12 col-sm-4 col-md-3">
+<div id="TOC" class="tocify">
+</div>
+</div>
+
+<div class="toc-content col-xs-12 col-sm-8 col-md-9">
+
+
+
+
+<div class="navbar navbar-default  navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">tlcf</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li>
+  <a href="index.html">Home</a>
+</li>
+<li>
+  <a href="about.html">About</a>
+</li>
+<li>
+  <a href="license.html">License</a>
+</li>
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        <li>
+  <a href="https://github.com/joonsukkang/tlcf">
+    <span class="fa fa-github"></span>
+     
+    Source code
+  </a>
+</li>
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<!-- Add a small amount of space between sections. -->
+<style type="text/css">
+div.section {
+  padding-top: 12px;
+}
+</style>
+
+<div class="fluid-row" id="header">
+
+
+
+<h1 class="title toc-ignore">Simulation Analysis of Noisy Paramter Model</h1>
+<h4 class="author">Joonsuk Kang</h4>
+<h4 class="date">2020-03-28</h4>
+
+</div>
+
+
+<p>
+<button type="button" class="btn btn-default btn-workflowr btn-workflowr-report" data-toggle="collapse" data-target="#workflowr-report">
+<span class="glyphicon glyphicon-list" aria-hidden="true"></span> workflowr <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span>
+</button>
+</p>
+<div id="workflowr-report" class="collapse">
+<ul class="nav nav-tabs">
+<li class="active">
+<a data-toggle="tab" href="#summary">Summary</a>
+</li>
+<li>
+<a data-toggle="tab" href="#checks"> Checks <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> </a>
+</li>
+<li>
+<a data-toggle="tab" href="#versions">Past versions</a>
+</li>
+</ul>
+<div class="tab-content">
+<div id="summary" class="tab-pane fade in active">
+<p>
+<strong>Last updated:</strong> 2020-03-29
+</p>
+<p>
+<strong>Checks:</strong> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> 7 <span class="glyphicon glyphicon-exclamation-sign text-danger" aria-hidden="true"></span> 0
+</p>
+<p>
+<strong>Knit directory:</strong> <code>tlcf/</code> <span class="glyphicon glyphicon-question-sign" aria-hidden="true" title="This is the local directory in which the code in this file was executed."> </span>
+</p>
+<p>
+This reproducible <a href="http://rmarkdown.rstudio.com">R Markdown</a> analysis was created with <a
+  href="https://github.com/jdblischak/workflowr">workflowr</a> (version 1.6.0). The <em>Checks</em> tab describes the reproducibility checks that were applied when the results were created. The <em>Past versions</em> tab lists the development history.
+</p>
+<hr>
+</div>
+<div id="checks" class="tab-pane fade">
+<div id="workflowr-checks" class="panel-group">
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRMarkdownfilestronguptodate"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>R Markdown file:</strong> up-to-date </a>
+</p>
+</div>
+<div id="strongRMarkdownfilestronguptodate" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great! Since the R Markdown file has been committed to the Git repository, you know the exact version of the code that produced these results.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongEnvironmentstrongempty"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Environment:</strong> empty </a>
+</p>
+</div>
+<div id="strongEnvironmentstrongempty" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! The global environment was empty. Objects defined in the global environment can affect the analysis in your R Markdown file in unknown ways. For reproduciblity it’s best to always run the code in an empty environment.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongSeedstrongcodesetseed20200324code"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Seed:</strong> <code>set.seed(20200324)</code> </a>
+</p>
+</div>
+<div id="strongSeedstrongcodesetseed20200324code" class="panel-collapse collapse">
+<div class="panel-body">
+<p>The command <code>set.seed(20200324)</code> was run prior to running the code in the R Markdown file. Setting a seed ensures that any results that rely on randomness, e.g. subsampling or permutations, are reproducible.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongSessioninformationstrongrecorded"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Session information:</strong> recorded </a>
+</p>
+</div>
+<div id="strongSessioninformationstrongrecorded" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! Recording the operating system, R version, and package versions is critical for reproducibility.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongCachestrongnone"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Cache:</strong> none </a>
+</p>
+</div>
+<div id="strongCachestrongnone" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Nice! There were no cached chunks for this analysis, so you can be confident that you successfully produced the results during this run.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongFilepathsstrongrelative"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>File paths:</strong> relative </a>
+</p>
+</div>
+<div id="strongFilepathsstrongrelative" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! Using relative paths to the files within your workflowr project makes it easier to run your code on other machines.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRepositoryversionstrongahrefhttpsgithubcomjoonsukkangtlcftree2a75053f0a8a9d3392525499ba0b9a9327beee92targetblank2a75053a"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Repository version:</strong> <a href="https://github.com/joonsukkang/tlcf/tree/2a75053f0a8a9d3392525499ba0b9a9327beee92" target="_blank">2a75053</a> </a>
+</p>
+</div>
+<div id="strongRepositoryversionstrongahrefhttpsgithubcomjoonsukkangtlcftree2a75053f0a8a9d3392525499ba0b9a9327beee92targetblank2a75053a" class="panel-collapse collapse">
+<div class="panel-body">
+<p>
+Great! You are using Git for version control. Tracking code development and connecting the code version to the results is critical for reproducibility. The version displayed above was the version of the Git repository at the time these results were generated. <br><br> Note that you need to be careful to ensure that all relevant files for the analysis have been committed to Git prior to generating the results (you can use <code>wflow_publish</code> or <code>wflow_git_commit</code>). workflowr only checks the R Markdown file, but you know if there are other scripts or data files that it depends on. Below is the status of the Git repository when the results were generated:
+</p>
+<pre><code>
+Ignored files:
+    Ignored:    .Rproj.user/
+
+Untracked files:
+    Untracked:  analysis/temp.Rmd
+    Untracked:  test.txt
+
+Unstaged changes:
+    Modified:   analysis/index.Rmd
+    Modified:   code/wflow_commands.R
+
+</code></pre>
+<p>
+Note that any generated files, e.g. HTML, png, CSS, etc., are not included in this status report because it is ok for generated content to have uncommitted changes.
+</p>
+</div>
+</div>
+</div>
+</div>
+<hr>
+</div>
+<div id="versions" class="tab-pane fade">
+
+<p>
+These are the previous versions of the R Markdown and HTML files. If you’ve configured a remote Git repository (see <code>?wflow_git_remote</code>), click on the hyperlinks in the table below to view them.
+</p>
+<div class="table-responsive">
+<table class="table table-condensed table-hover">
+<thead>
+<tr>
+<th>
+File
+</th>
+<th>
+Version
+</th>
+<th>
+Author
+</th>
+<th>
+Date
+</th>
+<th>
+Message
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+<a href="https://github.com/joonsukkang/tlcf/blob/2a75053f0a8a9d3392525499ba0b9a9327beee92/analysis/noisyparam_sim.Rmd" target="_blank">2a75053</a>
+</td>
+<td>
+Joonsuk Kang
+</td>
+<td>
+2020-03-29
+</td>
+<td>
+AltMin and noisy parameter model analysis
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<hr>
+</div>
+</div>
+</div>
+<p><strong>For model description, check <a href="altmin_ideas.html">altmin_ideas</a></strong></p>
+<div id="estimation-procedure" class="section level1">
+<h1>Estimation Procedure</h1>
+<div id="framework" class="section level3">
+<h3>Framework</h3>
+<p><span class="math inline">\(Y_0 =X_0\beta+\epsilon_0 \sim N(X_0\beta, \sigma^2 I_n)\)</span></p>
+<p><span class="math inline">\(Y_k=X_k\beta +X_k\delta_k+\epsilon_k\sim^{iid} N(X_k\beta, \gamma^2X_k BB^TX_k^T+\sigma^2I_n)\)</span></p>
+<p>For each <span class="math inline">\(k=1,\dots,K\)</span>, there is one realization <span class="math inline">\(\delta_k\)</span>, which creates correlations within <span class="math inline">\(Y_k\)</span>. If <span class="math inline">\(\delta_k=0\)</span> (or <span class="math inline">\(\gamma=0\)</span>) for all <span class="math inline">\(k\)</span>, then this problem shrinks into a case where the simulations follow exactly same distribution as the observation data. We then just need to concatenate all the data.</p>
+<p>With the existence of <span class="math inline">\(\delta_k\)</span>, however, we could have more variance in estimating <span class="math inline">\(\beta\)</span> if we just concatenate data and run normal estimation procedure. Luckily, as long as the <span class="math inline">\(\beta+\delta_k\)</span> has the same support and sign as in <span class="math inline">\(\beta\)</span>, we can at least be more confident in support recovery.</p>
+<p>The performance of estimatess can be evaluated in two hierarchical criteria: support recovery (i.e. which coordinates are nonzero) and size recovery (i.e. how close <span class="math inline">\(\beta_j\)</span> and <span class="math inline">\(\hat{\beta}_j\)</span>); the support recover is a more fundamental problem than size recovery.</p>
+</div>
+<div id="three-step-estimation-procedure" class="section level3">
+<h3>Three-step estimation procedure</h3>
+<p>Here, I propose a simple way to leverage simulation data: mainly in support recovery and also in size recovery.</p>
+<ol style="list-style-type: decimal">
+<li>Concatenate all data and run lasso or hard thresholding pursuit (HTP)</li>
+<li>Restrict the design matrix to the support estimated in (1): from a <span class="math inline">\(n\times p\)</span> matrix into a <span class="math inline">\(n \times s\)</span> matrix. (Suppose we have <span class="math inline">\(s&lt;n\)</span>.) Run OLS for observation data and for each <span class="math inline">\(k=1,\dots,K\)</span> seperately.<br />
+</li>
+<li>Combine <span class="math inline">\(\hat{\beta}_0, \hat{\beta}_1,\dots,\hat{\beta}_K\)</span> to construct a final estimate <span class="math inline">\(\hat{\beta}\)</span>.</li>
+</ol>
+<p>For step 1, lasso worked better than HTP (see the simulation study results below). To use lasso in support recovery, we ran lasso and then collected first <span class="math inline">\(s\)</span> predictors which became nonzero as the tuning parameter gradually decreases.</p>
+<p>For the 3rd step, the OLS estimator follows a distribution <span class="math inline">\(\hat{\beta}_0=(X_0^TX_0)^{-1}X_0^TY_0=(X_0^TX_0)^{-1}X_0^T(X_0\beta+\epsilon_0)=\beta+(X_0^TX_0)^{-1}X_0^T\epsilon_0 \sim N(\beta,\sigma^2(X_0^TX_0)^{-1})\)</span> and</p>
+<p><span class="math inline">\(\hat{\beta}_k=(X_k^TX_k)^{-1}X_k^TY_k=(X_k^TX_k)^{-1}X_k^T(X_k\beta+X_k\delta_k+\epsilon_k)=\beta+\delta_k+(X_k^TX_k)^{-1}X_k^T\epsilon_k \sim N(\beta,\gamma^2BB^T+\sigma^2(X_k^TX_k)^{-1})\)</span>.</p>
+<p>So we have <span class="math inline">\(K+1\)</span> independent estimators of <span class="math inline">\(\beta\)</span> with different precisions. Given that the distribution of X is similar, the variance of estimator from simulation is greater than the variance of estimator from observation data.</p>
+<p>Suppose <span class="math inline">\(X_k^TX_k\)</span> is identical for all <span class="math inline">\(k\)</span>. If we first combine <span class="math inline">\(\hat{\beta}_1,\dots,\hat{\beta}_K\)</span> to have <span class="math inline">\(\hat{\beta}_S=\frac{1}{K}\sum_{k=1}^K \hat{\beta}_k\)</span>, then the estimator <span class="math inline">\(\hat{\beta}_S \sim N(\beta,\frac{\gamma^2}{K}BB^T+\frac{\sigma^2}{K}(X^TX)^{-1})\)</span>. Compare this variance to the variance of <span class="math inline">\(\hat{\beta}_0\)</span>: <span class="math inline">\(\sigma^2(X^TX)^{-1}\)</span>. As <span class="math inline">\(K\)</span> increases, the combined estimator from simulation data becomes more precise, even than the estimator from the observation data. One way to combine all the estimators is to set <span class="math inline">\(\hat{\beta}=\alpha\hat{\beta}_0+(1-\alpha)\hat{\beta}_S\)</span> for some <span class="math inline">\(\alpha \in [0,1]\)</span>. Then <span class="math inline">\(\hat{\beta}\sim N(\beta,\alpha^2\sigma^2(X^TX)^{-1}+(1-\alpha)^2[\frac{\gamma^2}{K}BB^T+\frac{\sigma^2}{K}(X^TX)^{-1}])=N(\beta,(\alpha^2+\frac{(1-\alpha)^2}{K})\sigma^2(X^TX)^{-1}+\frac{(1-\alpha)^2}{K}\gamma^2BB^T)\)</span>.</p>
+<p>If <span class="math inline">\(K\)</span> is very small, it may be optimal to set <span class="math inline">\(\alpha\)</span> close to 0. If <span class="math inline">\(K\)</span> is large enough, letting <span class="math inline">\(\alpha\)</span> close to 1 would be optimal.</p>
+</div>
+</div>
+<div id="simulation-study" class="section level1">
+<h1>Simulation Study</h1>
+<div id="setting" class="section level3">
+<h3>Setting</h3>
+<p>The code used for simulation is:</p>
+<ul>
+<li><a href="https://github.com/joonsukkang/tlcf/tree/master/code/tl_1.m">tl_1.m</a></li>
+<li><a href="https://github.com/joonsukkang/tlcf/tree/master/code/n_support_recovery.m">n_support_recovery.m</a></li>
+</ul>
+<p>Parameters</p>
+<ul>
+<li>number of predictors: <span class="math inline">\(p=100\)</span></li>
+<li>number of nonzero entries in beta: <span class="math inline">\(s=10\)</span>; all the 10 nonzero values are set as <span class="math inline">\(1\)</span>’s; the support was chosen at random</li>
+<li><span class="math inline">\(\gamma=0.1\)</span></li>
+<li>number of observation (observation data): <span class="math inline">\(n \in \{10,20,30,50,100\}\)</span></li>
+<li>number of simulation data: <span class="math inline">\(K \in \{1,2,3,5,10,20,30\}\)</span></li>
+<li><p>for each <span class="math inline">\((n,K)\)</span> pair, 100 replications are made</p></li>
+<li><p>All elements of <span class="math inline">\(X\)</span> and <span class="math inline">\(\epsilon\)</span> are drawn from iid <span class="math inline">\(N(0,1)\)</span>.</p></li>
+</ul>
+</div>
+<div id="support-recovery" class="section level3">
+<h3>Support Recovery</h3>
+<p>The number of recovered support out of 10 (the truth) are shown below. Each point in the figure corresponds to one replication of the (n,K) pair; there are 100 points per small plot. The results are shown separately for lasso and HTP.</p>
+<p>First of all, lasso (matlab built-in function) performs much better than HTP (matlab code written by Simon Foucart). HTP’s performance does not improve with increasing <span class="math inline">\(n\)</span> and seems to get worse with increasing <span class="math inline">\(K\)</span>. This does not align with our intuition; the result may be due to inefficient implementation or bug in my code (?). In the following analysis, we will focus on the result based on lasso. Also, we come back to R and use the lasso implementation in <code>glmnet</code>.</p>
+<p><strong>Findings</strong> (with lasso results)</p>
+<p>As expected, using concatenated data almost always shows better performance, even with <span class="math inline">\(k=1\)</span>. The improvement is greater in small <span class="math inline">\(n\)</span> because the observation data only lacks enough sample size. Another point to note is that the increase of <span class="math inline">\(K\)</span> has heterogeneous effect on the estimation depending on <span class="math inline">\(n\)</span>, because the size of additional data points is <span class="math inline">\(n\)</span>. For example, see cases with <span class="math inline">\(K \in \{1,2,3\}\)</span> and <span class="math inline">\(n\in \{10,20\}\)</span>. When <span class="math inline">\(n=20\)</span>, the increase in K from 1 to 2 and 3 has greater effect than when <span class="math inline">\(n=10\)</span>.</p>
+<pre class="r"><code>library(tidyverse)</code></pre>
+<pre><code>── Attaching packages ─────────────────────────────────────────────────────────── tidyverse 1.3.0 ──</code></pre>
+<pre><code>✓ ggplot2 3.3.0     ✓ purrr   0.3.3
+✓ tibble  2.1.3     ✓ dplyr   0.8.4
+✓ tidyr   1.0.2     ✓ stringr 1.4.0
+✓ readr   1.3.1     ✓ forcats 0.5.0</code></pre>
+<pre><code>── Conflicts ────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
+x dplyr::filter() masks stats::filter()
+x dplyr::lag()    masks stats::lag()</code></pre>
+<pre class="r"><code>df.sr &lt;- read_csv(&quot;output/n_support_recovery_p100.csv&quot;, col_names = FALSE)</code></pre>
+<pre><code>Parsed with column specification:
+cols(
+  X1 = col_double(),
+  X2 = col_double(),
+  X3 = col_double(),
+  X4 = col_double(),
+  X5 = col_double(),
+  X6 = col_double(),
+  X7 = col_double()
+)</code></pre>
+<pre class="r"><code>colnames(df.sr) &lt;- c(&quot;n&quot;, &quot;K&quot;, &quot;iter&quot;, &quot;n_HTP&quot;, &quot;n_HTP_0&quot;, &quot;n_lasso&quot;, &quot;n_lasso_0&quot;)
+
+df.sr %&gt;%
+  ggplot(aes(x=jitter(n_lasso_0), y=jitter(n_lasso)))+
+  geom_point(alpha=0.1)+geom_abline(slope=1,intercept=0,alpha=0.3)+
+  facet_grid(n~K, labeller=labeller(n=label_both, K=label_both))+
+  scale_x_continuous(breaks=c(0,5,10), limits = c(-1,11))+
+  scale_y_continuous(breaks=c(0,5,10), limits = c(-1,11))+
+  ggtitle(&quot;Number of recovered support: Lasso&quot;)+
+  xlab(&quot;using observation data only&quot;)+ylab(&quot;using concatenated data&quot;)</code></pre>
+<p><img src="figure/noisyparam_sim.Rmd/unnamed-chunk-1-1.png" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>df.sr %&gt;%
+  ggplot(aes(x=jitter(n_HTP_0), y=jitter(n_HTP)))+
+  geom_point(alpha=0.1)+geom_abline(slope=1,intercept=0,alpha=0.3)+
+  facet_grid(n~K, labeller=labeller(n=label_both, K=label_both))+
+  scale_x_continuous(breaks=c(0,5,10), limits = c(-1,11))+
+  scale_y_continuous(breaks=c(0,5,10), limits = c(-1,11))+
+  ggtitle(&quot;Number of recovered support: HTP&quot;)+
+  xlab(&quot;using observation data only&quot;)+ylab(&quot;using concatenated data&quot;)</code></pre>
+<p><img src="figure/noisyparam_sim.Rmd/unnamed-chunk-1-2.png" width="672" style="display: block; margin: auto;" /></p>
+</div>
+<div id="size-recovery" class="section level3">
+<h3>Size Recovery</h3>
+<pre class="r"><code>library(glmnet); library(tictoc)</code></pre>
+<pre><code>Loading required package: Matrix</code></pre>
+<pre><code>
+Attaching package: &#39;Matrix&#39;</code></pre>
+<pre><code>The following objects are masked from &#39;package:tidyr&#39;:
+
+    expand, pack, unpack</code></pre>
+<pre><code>Loaded glmnet 3.0-2</code></pre>
+<pre class="r"><code># set parameters
+set.seed(773)
+p=100; s=10; gamma=0.1
+
+# function for  simulation
+#################################################################
+calc_l2 &lt;- function(n, K, p=100, s=10, gamma=0.1){
+  
+  beta &lt;- rep(0,p); support &lt;- sort(sample(p,s)); beta[support] &lt;- 1
+  
+  # generate data
+  X &lt;- array(rnorm(n*p*(K+1)), dim=c(n,p,K+1))
+  epsilon &lt;- array(rnorm(n*p*(K+1)), dim=c(n,1,K+1))
+  delta &lt;- array(0, dim=c(p,K+1))
+  for (i in 1:K){
+    delta[,i+1] &lt;- gamma*diag(beta) %*% rnorm(n=p, mean=0, sd=1)
+  }
+  Y &lt;- array(0,dim=c(n,1,K+1))
+  for (i in 1:(K+1)){
+    Y[,,i] &lt;- X[,,i] %*% (beta+delta[,i])+epsilon[,,i]
+  }
+  # concatenate
+  Xcon &lt;- array(0, dim=c(n*(K+1),p))
+  Ycon &lt;- array(0, dim=c(n*(K+1),1))
+  for (i in 1:(K+1)){
+    Xcon[((i-1)*n+1):(i*n),] &lt;- X[,,i]
+    Ycon[((i-1)*n+1):(i*n),] &lt;- Y[,,i]
+  }
+  
+  # run lasso
+  fit0 &lt;- glmnet(x=X[,,1], y=Y[,,1])
+  fit &lt;- glmnet(x=Xcon, y=Ycon)
+  
+  # find the first s predictors which became nonzero with gradually relaxing constraints
+  support_est &lt;- sort(as.numeric(substr(names(sort(rowSums(fit$beta !=0), 
+                                                   decreasing=TRUE)[1:s]),2,100)))
+  support_est0 &lt;- sort(as.numeric(substr(names(sort(rowSums(fit0$beta !=0),
+                                                    decreasing=TRUE)[1:s]),2,100)))
+  
+  # number of correct supports by lasso + concatenated data
+  n_correct &lt;- length(intersect(support, support_est)) 
+  
+  # estimator 1) lasso + concat + CV
+  cv.fit &lt;- cv.glmnet(Xcon[,support_est], Ycon, type.measure = &quot;mse&quot;, nfolds = 10)
+  cv.fit$lambda.min
+  beta_est1 &lt;- rep(0,p)
+  beta_est1[support_est] &lt;- coef(cv.fit, s = &quot;lambda.min&quot;)[-1] # -1 excludes intercept
+  
+  # estimator 2) weighted average of OLS estimators
+  beta_est2.0 &lt;- rep(0,p)
+  beta_est2.0[support_est] &lt;- coef(lm(Y[,,1]~X[,support_est,1]))[-1]
+  
+  beta_est2.s &lt;- array(0,dim=c(p,K))
+  for (i in 1:K){
+    beta_est2.s[support_est,i] &lt;- coef(lm(Y[,,i+1]~X[,support_est,i+1]))[-1]
+  }
+  beta_est2.s &lt;- rowMeans(beta_est2.s)
+  
+  # calculate L2 error
+  l2.est1 &lt;- norm(matrix(beta-beta_est1), type=&quot;F&quot;)
+  alpha.grid &lt;- seq(0,1,by=0.01)
+  l2.est2 &lt;- rep(0,length(alpha.grid))
+  for (i in 1:length(alpha.grid)){
+    alpha &lt;- alpha.grid[i]
+    l2.est2[i] &lt;- norm(matrix(beta-(alpha*beta_est2.0+(1-alpha)*beta_est2.s)), type=&quot;F&quot;)
+  }
+  
+  l2 &lt;- c(l2.est1, l2.est2)
+  
+  return(l2)
+}
+
+
+#################################################################
+
+# make grid
+n.grid &lt;- c(20,30,50,100)
+K.grid &lt;- c(1,2,3,5,10,20,30)
+iter &lt;- 1:50
+l2.grid &lt;- expand_grid(n.grid, K.grid, iter) 
+
+# run over the grid
+tic()
+for (i in 1:nrow(l2.grid)){
+  l2.grid[i,4:105] &lt;- calc_l2(n=l2.grid$n.grid[i],K=l2.grid$K.grid[i])
+}
+toc() # 109.222 sec elapsed</code></pre>
+<pre><code>110.652 sec elapsed</code></pre>
+<p>Here, we use the estimated support from lasso and concatenated data, and compare two type of estimators. The first estimator is the lasso estimator with the concatenated data (equal weights for observation and simulation data) and the tuning parameter is chosen by cross validation. The second estimator is a sequence of estimators with <span class="math inline">\(\hat{\beta}=\alpha\hat{\beta}_0+(1-\alpha)\hat{\beta}_s\)</span> where <span class="math inline">\(\hat{\beta}_0\)</span> is the OLS estimator from the observed sample and <span class="math inline">\(\hat{\beta}_s\)</span> is the average of the OLS estimators from simulated samples; <span class="math inline">\(\alpha=0,0.01,0.02,\dots,0.99,1\)</span>.<span class="math inline">\(\alpha=\frac{1}{K+1}\)</span> corresponds to the case of equal-weight averaging of all the <span class="math inline">\(K+1\)</span> OLS estimators.</p>
+<p>L2 norm of the estimators are shown below. Each line in the figure corresponds to one sequence of replication of the (n,K) pair; there are 50 liens per small plot. The leftmost point corresponds to <span class="math inline">\(\hat{\beta}_s\)</span> (<span class="math inline">\(\alpha=0\)</span>) and rightmost <span class="math inline">\(\hat{\beta}_0\)</span> (<span class="math inline">\(\alpha=1\)</span>). The blue thick line shows average L2error wihtin each plot with the blue dot the lowest average L2 error point. And the vertical red lines are alpha values corresponding to <span class="math inline">\(\alpha=\frac{1}{K+1}\)</span>: equal weight over observation data nad K simulations.</p>
+<p>Empirically, for small <span class="math inline">\(n\)</span>, equal weight is nearly optimal: blue dots are almost always on the red line. But for large <span class="math inline">\(n\)</span> and small <span class="math inline">\(k\)</span>, when <span class="math inline">\(\hat{\beta}_0\)</span> is farily precise but <span class="math inline">\(\hat{\beta}_s\)</span> could have large variance, underweighting simulation data (greater <span class="math inline">\(\alpha\)</span>) is optimal.</p>
+<pre class="r"><code>data.frame(n=rep(l2.grid$n.grid, times=101),
+           K=rep(l2.grid$K.grid, times=101),
+           iter=rep(l2.grid$iter, times=101),
+           alpha=rep(seq(0,1,by=0.01), each=nrow(l2.grid)),
+           l2error = unlist(l2.grid[,5:105], use.names=FALSE)
+           ) -&gt; df.temp
+df.temp %&gt;% group_by(n,K,alpha) %&gt;% 
+  summarise(meanl2=mean(l2error)) -&gt; df.temp.meanl2
+df.temp.meanl2 %&gt;% group_by(n,K) %&gt;% arrange(meanl2) %&gt;% slice(1)  -&gt; df.temp.bestl2
+df.temp %&gt;%
+  ggplot()+geom_line(aes(x=alpha, y=l2error, group=iter), alpha=0.1)+
+  geom_line(data=df.temp.meanl2, aes(x=alpha, y=meanl2), col=&#39;blue&#39;)+
+  geom_point(data=df.temp.bestl2, aes(x=alpha, y=meanl2), col=&#39;blue&#39;)+
+  facet_grid(n~K, labeller=labeller(n=label_both, K=label_both), scales=&quot;free_y&quot;)+
+  scale_x_continuous(breaks=c(0,0.5,1))+scale_y_log10()+
+  geom_vline(aes(xintercept=1/(K+1), col=&quot;equal weight&quot;))+
+  ggtitle(&quot;L2 error&quot;)</code></pre>
+<p><img src="figure/noisyparam_sim.Rmd/unnamed-chunk-3-1.png" width="672" style="display: block; margin: auto;" /></p>
+<p>The figure below highlights the optimal alpha (blue dots in the figure above) with respect to the values of <span class="math inline">\(n\)</span> and <span class="math inline">\(K\)</span>. The purple line corresponds to an equal weight line (<span class="math inline">\(\alpha=\frac{1}{K+1}\)</span>). This figure confirms the trend that underweighting simualation data is optimal and the degree of underweighting should be greater for ‘large n, small K’ situation.</p>
+<pre class="r"><code>df.temp.bestl2 %&gt;% ungroup() %&gt;% mutate(n=factor(n)) %&gt;%
+  ggplot()+geom_line(aes(x=K, y=alpha, group=n, col=n))+
+  geom_line(aes(x=K, y=1/(K+1), col=&quot;equal weight&quot;))</code></pre>
+<p><img src="figure/noisyparam_sim.Rmd/unnamed-chunk-4-1.png" width="672" style="display: block; margin: auto;" /></p>
+<p>Surprisingly and sadly, the lasso (from 10-fold cross validation) has almost identical or slightly better performance than the weighted OLS estimator strategy (with empirically optimal alpha values).</p>
+<pre class="r"><code>l2.grid[,1:4] %&gt;%
+  rename(n=n.grid, K=K.grid, lasso=V4) -&gt; df.temp2a
+
+df.temp.bestl2 %&gt;% select(-meanl2) %&gt;% 
+  inner_join(df.temp, by=c(&#39;n&#39;,&#39;K&#39;,&#39;alpha&#39;)) %&gt;%
+  rename(bestalpha=l2error) %&gt;% select(-alpha) %&gt;%
+  inner_join(df.temp2a, by=c(&#39;n&#39;,&#39;K&#39;,&#39;iter&#39;)) %&gt;%
+  ggplot()+geom_point(aes(x=bestalpha, y=lasso), alpha=0.1)+
+  geom_abline(slope=1,intercept = 0)+ scale_x_log10()+scale_y_log10()+
+  facet_grid(n~K, labeller=labeller(n=label_both, K=label_both), scales=&quot;free&quot;)</code></pre>
+<p><img src="figure/noisyparam_sim.Rmd/unnamed-chunk-5-1.png" width="672" style="display: block; margin: auto;" /></p>
+<p>One possibly interesting task would be to check similar empirical optimal weighting scheme with lasso. <code>glmnet</code> function has a easy weighting implementation. It taks a little time to run, and we expect a similar pattern there.</p>
+</div>
+</div>
+<div id="further-works" class="section level1">
+<h1>Further works</h1>
+<ul>
+<li>A more elaborate and efficient algorithm would be possible. Especially, we should exploit the structure that the parameter <span class="math inline">\(\beta\)</span> also governs the variance structure: <span class="math inline">\(\gamma^2X_kBB^TX_k^T\)</span>. Find MLE?</li>
+<li>It may be meaningful to establish error bounds for this procedure or weighted lasso, or any other efficient algorithm under the specified noisy parameter model.</li>
+<li>We assumed the sparsity level <span class="math inline">\(s\)</span> is knwon. We can relax this assumption.</li>
+</ul>
+<br>
+<p>
+<button type="button" class="btn btn-default btn-workflowr btn-workflowr-sessioninfo" data-toggle="collapse" data-target="#workflowr-sessioninfo" style="display: block;">
+<span class="glyphicon glyphicon-wrench" aria-hidden="true"></span> Session information
+</button>
+</p>
+<div id="workflowr-sessioninfo" class="collapse">
+<pre class="r"><code>sessionInfo()</code></pre>
+<pre><code>R version 3.6.1 (2019-07-05)
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+Running under: macOS Catalina 10.15.3
+
+Matrix products: default
+BLAS:   /Library/Frameworks/R.framework/Versions/3.6/Resources/lib/libRblas.0.dylib
+LAPACK: /Library/Frameworks/R.framework/Versions/3.6/Resources/lib/libRlapack.dylib
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base     
+
+other attached packages:
+ [1] tictoc_1.0      glmnet_3.0-2    Matrix_1.2-18   forcats_0.5.0  
+ [5] stringr_1.4.0   dplyr_0.8.4     purrr_0.3.3     readr_1.3.1    
+ [9] tidyr_1.0.2     tibble_2.1.3    ggplot2_3.3.0   tidyverse_1.3.0
+[13] workflowr_1.6.0
+
+loaded via a namespace (and not attached):
+ [1] Rcpp_1.0.3       lubridate_1.7.4  lattice_0.20-38  assertthat_0.2.1
+ [5] rprojroot_1.3-2  digest_0.6.25    foreach_1.4.8    R6_2.4.1        
+ [9] cellranger_1.1.0 backports_1.1.5  reprex_0.3.0     evaluate_0.14   
+[13] httr_1.4.1       pillar_1.4.3     rlang_0.4.5      readxl_1.3.1    
+[17] rstudioapi_0.11  whisker_0.4      rmarkdown_2.1    labeling_0.3    
+[21] munsell_0.5.0    broom_0.5.5      compiler_3.6.1   httpuv_1.5.2    
+[25] modelr_0.1.6     xfun_0.12        pkgconfig_2.0.3  shape_1.4.4     
+[29] htmltools_0.4.0  tidyselect_1.0.0 codetools_0.2-16 fansi_0.4.1     
+[33] crayon_1.3.4     dbplyr_1.4.2     withr_2.1.2      later_1.0.0     
+[37] grid_3.6.1       nlme_3.1-143     jsonlite_1.6.1   gtable_0.3.0    
+[41] lifecycle_0.2.0  DBI_1.1.0        git2r_0.26.1     magrittr_1.5    
+[45] scales_1.1.0     cli_2.0.2        stringi_1.4.6    farver_2.0.3    
+[49] fs_1.3.2         promises_1.1.0   xml2_1.2.2       generics_0.0.2  
+[53] vctrs_0.2.3      iterators_1.0.12 tools_3.6.1      glue_1.3.2      
+[57] hms_0.5.3        yaml_2.2.1       colorspace_1.4-1 rvest_0.3.5     
+[61] knitr_1.28       haven_2.2.0     </code></pre>
+</div>
+</div>
+
+
+<!-- Adjust MathJax settings so that all math formulae are shown using
+TeX fonts only; see
+http://docs.mathjax.org/en/latest/configuration.html.  This will make
+the presentation more consistent at the cost of the webpage sometimes
+taking slightly longer to load. Note that this only works because the
+footer is added to webpages before the MathJax javascript. -->
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    "HTML-CSS": { availableFonts: ["TeX"] }
+  });
+</script>
+
+
+</div>
+</div>
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- tabsets -->
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open')
+  });
+});
+</script>
+
+<!-- code folding -->
+
+<script>
+$(document).ready(function ()  {
+
+    // move toc-ignore selectors from section div to header
+    $('div.section.toc-ignore')
+        .removeClass('toc-ignore')
+        .children('h1,h2,h3,h4,h5').addClass('toc-ignore');
+
+    // establish options
+    var options = {
+      selectors: "h1,h2,h3",
+      theme: "bootstrap3",
+      context: '.toc-content',
+      hashGenerator: function (text) {
+        return text.replace(/[.\\/?&!#<>]/g, '').replace(/\s/g, '_').toLowerCase();
+      },
+      ignoreSelector: ".toc-ignore",
+      scrollTo: 0
+    };
+    options.showAndHide = true;
+    options.smoothScroll = true;
+
+    // tocify
+    var toc = $("#TOC").tocify(options).data("toc-tocify");
+});
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
