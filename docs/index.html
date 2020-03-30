@@ -22,6 +22,8 @@
 <script src="site_libs/navigation-1.1/tabsets.js"></script>
 <link href="site_libs/highlightjs-9.12.0/textmate.css" rel="stylesheet" />
 <script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
+<link href="site_libs/font-awesome-5.1.0/css/all.css" rel="stylesheet" />
+<link href="site_libs/font-awesome-5.1.0/css/v4-shims.css" rel="stylesheet" />
 
 <style type="text/css">code{white-space: pre;}</style>
 <style type="text/css">
@@ -282,7 +284,13 @@ $(document).ready(function () {
 </li>
       </ul>
       <ul class="nav navbar-nav navbar-right">
-        
+        <li>
+  <a href="https://github.com/joonsukkang/tlcf">
+    <span class="fa fa-github"></span>
+     
+    Source code
+  </a>
+</li>
       </ul>
     </div><!--/.nav-collapse -->
   </div><!--/.container -->
@@ -324,7 +332,7 @@ div.section {
 <div class="tab-content">
 <div id="summary" class="tab-pane fade in active">
 <p>
-<strong>Last updated:</strong> 2020-03-24
+<strong>Last updated:</strong> 2020-03-29
 </p>
 <p>
 <strong>Checks:</strong> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> 2 <span class="glyphicon glyphicon-exclamation-sign text-danger" aria-hidden="true"></span> 0
@@ -355,17 +363,24 @@ This reproducible <a href="http://rmarkdown.rstudio.com">R Markdown</a> analysis
 <div class="panel panel-default">
 <div class="panel-heading">
 <p class="panel-title">
-<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRepositoryversionstrongc3df8b6"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Repository version:</strong> c3df8b6 </a>
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRepositoryversionstrongahrefhttpsgithubcomjoonsukkangtlcftreef6873659d37f25437a3bbb680086be1a89f0127ftargetblankf687365a"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Repository version:</strong> <a href="https://github.com/joonsukkang/tlcf/tree/f6873659d37f25437a3bbb680086be1a89f0127f" target="_blank">f687365</a> </a>
 </p>
 </div>
-<div id="strongRepositoryversionstrongc3df8b6" class="panel-collapse collapse">
+<div id="strongRepositoryversionstrongahrefhttpsgithubcomjoonsukkangtlcftreef6873659d37f25437a3bbb680086be1a89f0127ftargetblankf687365a" class="panel-collapse collapse">
 <div class="panel-body">
 <p>
 Great! You are using Git for version control. Tracking code development and connecting the code version to the results is critical for reproducibility. The version displayed above was the version of the Git repository at the time these results were generated. <br><br> Note that you need to be careful to ensure that all relevant files for the analysis have been committed to Git prior to generating the results (you can use <code>wflow_publish</code> or <code>wflow_git_commit</code>). workflowr only checks the R Markdown file, but you know if there are other scripts or data files that it depends on. Below is the status of the Git repository when the results were generated:
 </p>
 <pre><code>
+Ignored files:
+    Ignored:    .Rproj.user/
+
 Untracked files:
-    Untracked:  code/wflow_commands.R
+    Untracked:  analysis/temp.Rmd
+    Untracked:  test.txt
+
+Unstaged changes:
+    Modified:   code/wflow_commands.R
 
 </code></pre>
 <p>
@@ -409,7 +424,41 @@ Message
 Rmd
 </td>
 <td>
-3d2444d
+<a href="https://github.com/joonsukkang/tlcf/blob/f6873659d37f25437a3bbb680086be1a89f0127f/analysis/index.Rmd" target="_blank">f687365</a>
+</td>
+<td>
+Joonsuk Kang
+</td>
+<td>
+2020-03-29
+</td>
+<td>
+update index
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+<a href="https://rawcdn.githack.com/joonsukkang/tlcf/605caa7fe1aa4bab11bffa91dcfd2d9f48b0c533/docs/index.html" target="_blank">605caa7</a>
+</td>
+<td>
+Joonsuk Kang
+</td>
+<td>
+2020-03-24
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+<a href="https://github.com/joonsukkang/tlcf/blob/3d2444d909c9bd2537fea56bc6697272240778e2/analysis/index.Rmd" target="_blank">3d2444d</a>
 </td>
 <td>
 Joonsuk Kang
@@ -428,7 +477,49 @@ Start workflowr project.
 </div>
 </div>
 </div>
-<p>Welcome to my research website.</p>
+<div id="altmin-algorithm" class="section level1">
+<h1>AltMin Algorithm</h1>
+<div id="altmin-simulation-and-thoughts-on-banerjee-paper-banerjee" class="section level3">
+<h3>AltMin Simulation and Thoughts on Banerjee paper: <a href="banerjee.html">banerjee</a></h3>
+<ul>
+<li><p>Tried to replicate the main figure in the Chen and Banerjee (2018) An Improved Analysis of Alternating Minimization for Structured Multi-Response Regression; but didn’t work well. Maybe due to Hard Thresholding Pursuit (HTP)</p></li>
+<li><p>The empirical L2 error distribution follows a bimodal distribution. There seems to exist a “domain of attraction”. For a given initialization, the data (<span class="math inline">\({(X_i,y_i)}^n_{i=1}\)</span>) follows a distribution in which if the data falls into the domain of attraction, the performance of AltMin is <em>good enough</em> but the performance is <em>not good</em> otherwise.</p></li>
+<li><p>Analysis should be split into 1) probability of data falling into the “domain of attraction”, say <span class="math inline">\(P(\gamma(X)=1)\)</span>, and the distribution of performance conditional on the data falling into the domain of attraction.</p></li>
+</ul>
+</div>
+<div id="altmin-ideas-for-obssim-data-altmin_ideas" class="section level3">
+<h3>AltMin Ideas for Obs+Sim Data: <a href="altmin_ideas.html">altmin_ideas</a></h3>
+<ul>
+<li><p>One way to use multi-response AltMin model is to model spatial correlation. We can also flexibly incorporate different parameter values for each response and combine this with multi-response graph total variation model (MultiGTV).</p></li>
+<li><p>Noisy paramete-type models (the parameter becomes <span class="math inline">\(\beta+\gamma_k\)</span> for simulation <span class="math inline">\(k\)</span> or <span class="math inline">\(\beta+\gamma\)</span> for all simulations) do not seem to easily conform to this multi-response altmin framework. However, this approach may be worth trying.</p></li>
+</ul>
+</div>
+</div>
+<div id="noisy-paramter-model" class="section level1">
+<h1>Noisy Paramter Model</h1>
+<div id="simulation-analysis-of-noisy-paramter-model-noisyparam_sim" class="section level3">
+<h3>Simulation Analysis of Noisy Paramter Model: <a href="noisyparam_sim.html">noisyparam_sim</a></h3>
+<ul>
+<li>Under noisy parameter model, simulation data is very useful in support recovery.</li>
+<li>One way to leverage simulation data is to 1) use simulation data in support recovery; 2) restricted to the estimated support, construct independent beta estimators for each simulation and for observation data; 3) then combine all the estimators</li>
+<li>In the step 3 (combining estimators), underweighting of simulation data is optimal, especially wehn <span class="math inline">\(n\)</span> is large and <span class="math inline">\(K\)</span> is small because large <span class="math inline">\(n\)</span> makes the estimator based on observation data precise, while small <span class="math inline">\(K\)</span> may not compensate the greater variance in simulation-based estimator.</li>
+<li>lasso performs better than HTP.</li>
+</ul>
+<p>Further Works</p>
+<ul>
+<li>A more elaborate and efficient algorithm would be possible. Especially, we should exploit the structure that the parameter β also governs the variance structure: <span class="math inline">\(\beta X_kBB^TX_k^T\)</span>. Find MLE?</li>
+<li>It may be meaningful to establish error bounds for this procedure or weighted lasso, or any other efficient algorithm under the specified noisy parameter model.</li>
+<li>We assumed the sparsity level s is knwon. We can relax this assumption.</li>
+</ul>
+</div>
+<div id="simulation-analysis-of-noisy-paramter-model-shared-noise-parameter-delta-noisyparam_sharednoise_sim" class="section level3">
+<h3>Simulation Analysis of Noisy Paramter Model: shared noise parameter <span class="math inline">\(\delta\)</span>: <a href="noisyparam_sharednoise_sim.html">noisyparam_sharednoise_sim</a></h3>
+<ul>
+<li>The optimal weighting scheme is drastically differnet: much severe underweighting is encojuraged That’s because especially for large <span class="math inline">\(n\)</span>, we have fairly precise estimator for <span class="math inline">\(\beta\)</span> based on observation data while the simulation-based estimator converges to <span class="math inline">\(\beta+\delta\)</span>, which has a distribution <span class="math inline">\(N(\beta,\gamma^2BB^T)\)</span> even in the limit. Thus, even if K is extremely high, it has only a marginal additional piece of information about the value of <span class="math inline">\(\beta\)</span>.</li>
+<li>Support recovery shows similar pattern as in simulation-run-specific noise <span class="math inline">\(\delta_k\)</span>.</li>
+</ul>
+</div>
+</div>
 
 
 <!-- Adjust MathJax settings so that all math formulae are shown using
