@@ -8,4 +8,42 @@ editor_options:
   chunk_output_type: console
 ---
 
-Welcome to my research website.
+# AltMin Algorithm
+
+### AltMin Simulation and Thoughts on Banerjee paper: [banerjee](banerjee.html)
+
++ Tried to replicate the main figure in the Chen and Banerjee (2018) An Improved Analysis of Alternating Minimization for Structured Multi-Response Regression; but didn't work well. Maybe due to Hard Thresholding Pursuit (HTP)
+
++ The empirical L2 error distribution follows a bimodal distribution. There seems to exist a "domain of attraction". For a given initialization, the data (${(X_i,y_i)}^n_{i=1}$) follows a distribution in which if the data falls into the domain of attraction, the performance of AltMin is *good enough* but the performance is *not good* otherwise.
+
++ Analysis should be split into 1) probability of data falling into the "domain of attraction", say $P(\gamma(X)=1)$, and the distribution of performance conditional on the data falling into the domain of attraction.
+
+
+### AltMin Ideas for Obs+Sim Data: [altmin_ideas](altmin_ideas.html)
+
++ One way to use multi-response AltMin model is to model spatial correlation. We can also flexibly incorporate different parameter values for each response and combine this with multi-response graph total variation model (MultiGTV).
+
++ Noisy paramete-type models (the parameter becomes $\beta+\gamma_k$ for simulation $k$ or $\beta+\gamma$ for all simulations) do not seem to easily conform to this multi-response altmin framework. However, this approach may be worth trying.
+
+
+# Noisy Paramter Model
+
+### Simulation Analysis of Noisy Paramter Model: [noisyparam_sim](noisyparam_sim.html)
+
++ Under noisy parameter model, simulation data is very useful in support recovery.
++ One way to leverage simulation data is to 1) use simulation data in support recovery; 2) restricted to the estimated support, construct independent beta estimators for each simulation and for observation data; 3) then combine all the estimators
++ In the step 3 (combining estimators), underweighting of simulation data is optimal, especially wehn $n$ is large and $K$ is small because large $n$ makes the estimator based on observation data precise, while small $K$ may not compensate the greater variance in simulation-based estimator.
++ lasso performs better than HTP.
+
+Further Works
+
++ A more elaborate and efficient algorithm would be possible. Especially, we should exploit the structure that the parameter β also governs the variance structure: $\beta X_kBB^TX_k^T$. Find MLE?
++ It may be meaningful to establish error bounds for this procedure or weighted lasso, or any other efficient algorithm under the specified noisy parameter model.
++ We assumed the sparsity level s is knwon. We can relax this assumption.
+
+
+### Simulation Analysis of Noisy Paramter Model: shared noise parameter $\delta$: [noisyparam_sharednoise_sim](noisyparam_sharednoise_sim.html)
+
++ The optimal weighting scheme is drastically differnet: much severe underweighting is encojuraged That's because especially for large $n$, we have fairly precise estimator for $\beta$ based on observation data while the simulation-based estimator converges to $\beta+\delta$, which has a distribution $N(\beta,\gamma^2BB^T)$ even in the limit. Thus, even if K is extremely high, it has only a marginal additional piece of information about the value of $\beta$.
++ Support recovery shows similar pattern as in simulation-run-specific noise $\delta_k$.
+
