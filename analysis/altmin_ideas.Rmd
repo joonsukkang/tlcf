@@ -53,7 +53,7 @@ Suppose we want to predict temperature for L locations and $Y_i=\begin{pmatrix} 
 
 **Relaxation: Different parameters ($\beta$) for each location**
 
-The model's assumption that the $L$ locations share an identical $\beta$ can be readily relaxed by letting $Y_i=X_iB+\epsilon_i$ where $X_i=\begin{pmatrix} X_{i1} & 0 & 0 & \dots\\ 0 & X_{i2} & 0 & \dots\\ 0 & 0 & X_{i3} & \dots\\ \dots &&& X_{iL}\end{pmatrix} \in \mathbb{R}^{L \times Lp}$ and $B=\begin{pmatrix} B_{1}\\ B_2 \\ \dots \\ B_L \end{pmatrix} \in \mathbb{R}^{Lp\times 1}$. The rate stays the same: $O(\frac{w(c)+m}{\sqrt{n(K+1)}})$.
+The model's assumption that the $L$ locations share an identical $\beta$ can be readily relaxed by letting $Y_i=X_iB+\epsilon_i$ where $X_i=\begin{pmatrix} X_{i1} & 0 & 0 & \dots\\ 0 & X_{i2} & 0 & \dots\\ 0 & 0 & X_{i3} & \dots\\ \dots &&& X_{iL}\end{pmatrix} \in \mathbb{R}^{L \times Lp}$ and $B=\begin{pmatrix} B_{1}\\ B_2 \\ \dots \\ B_L \end{pmatrix} \in \mathbb{R}^{Lp\times 1}$. The rate stays the same: $O(\frac{w(c)+L}{\sqrt{n(K+1)}})$.
 
 
 
