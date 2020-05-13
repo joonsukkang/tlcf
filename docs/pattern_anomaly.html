@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+
+<meta name="author" content="Joonsuk Kang" />
+
+<meta name="date" content="2020-05-11" />
+
+<title>Fluctuation Pattern + Anomaly: low-rank matrix factorization approach</title>
+
+<script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="site_libs/bootstrap-3.3.5/css/cosmo.min.css" rel="stylesheet" />
+<script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<script src="site_libs/jqueryui-1.11.4/jquery-ui.min.js"></script>
+<link href="site_libs/tocify-1.9.1/jquery.tocify.css" rel="stylesheet" />
+<script src="site_libs/tocify-1.9.1/jquery.tocify.js"></script>
+<script src="site_libs/navigation-1.1/tabsets.js"></script>
+<link href="site_libs/highlightjs-9.12.0/textmate.css" rel="stylesheet" />
+<script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
+<link href="site_libs/font-awesome-5.1.0/css/all.css" rel="stylesheet" />
+<link href="site_libs/font-awesome-5.1.0/css/v4-shims.css" rel="stylesheet" />
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css">
+  pre:not([class]) {
+    background-color: white;
+  }
+</style>
+<script type="text/javascript">
+if (window.hljs) {
+  hljs.configure({languages: []});
+  hljs.initHighlightingOnLoad();
+  if (document.readyState && document.readyState === "complete") {
+    window.setTimeout(function() { hljs.initHighlighting(); }, 0);
+  }
+}
+</script>
+
+
+
+<style type="text/css">
+h1 {
+  font-size: 34px;
+}
+h1.title {
+  font-size: 38px;
+}
+h2 {
+  font-size: 30px;
+}
+h3 {
+  font-size: 24px;
+}
+h4 {
+  font-size: 18px;
+}
+h5 {
+  font-size: 16px;
+}
+h6 {
+  font-size: 12px;
+}
+.table th:not([align]) {
+  text-align: left;
+}
+</style>
+
+
+
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+code {
+  color: inherit;
+  background-color: rgba(0, 0, 0, 0.04);
+}
+img {
+  max-width:100%;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+.html-widget {
+  margin-bottom: 20px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+summary {
+  display: list-item;
+}
+</style>
+
+
+<style type="text/css">
+/* padding for bootstrap navbar */
+body {
+  padding-top: 51px;
+  padding-bottom: 40px;
+}
+/* offset scroll position for anchor links (for fixed navbar)  */
+.section h1 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h2 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h3 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h4 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h5 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h6 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.dropdown-submenu {
+  position: relative;
+}
+.dropdown-submenu>.dropdown-menu {
+  top: 0;
+  left: 100%;
+  margin-top: -6px;
+  margin-left: -1px;
+  border-radius: 0 6px 6px 6px;
+}
+.dropdown-submenu:hover>.dropdown-menu {
+  display: block;
+}
+.dropdown-submenu>a:after {
+  display: block;
+  content: " ";
+  float: right;
+  width: 0;
+  height: 0;
+  border-color: transparent;
+  border-style: solid;
+  border-width: 5px 0 5px 5px;
+  border-left-color: #cccccc;
+  margin-top: 5px;
+  margin-right: -10px;
+}
+.dropdown-submenu:hover>a:after {
+  border-left-color: #ffffff;
+}
+.dropdown-submenu.pull-left {
+  float: none;
+}
+.dropdown-submenu.pull-left>.dropdown-menu {
+  left: -100%;
+  margin-left: 10px;
+  border-radius: 6px 0 6px 6px;
+}
+</style>
+
+<script>
+// manage active state of menu based on current page
+$(document).ready(function () {
+  // active menu anchor
+  href = window.location.pathname
+  href = href.substr(href.lastIndexOf('/') + 1)
+  if (href === "")
+    href = "index.html";
+  var menuAnchor = $('a[href="' + href + '"]');
+
+  // mark it active
+  menuAnchor.parent().addClass('active');
+
+  // if it's got a parent navbar menu mark it active as well
+  menuAnchor.closest('li.dropdown').addClass('active');
+});
+</script>
+
+<!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "&#xe258;";
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+  background-color: transparent;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
+<!-- code folding -->
+
+
+
+<style type="text/css">
+
+#TOC {
+  margin: 25px 0px 20px 0px;
+}
+@media (max-width: 768px) {
+#TOC {
+  position: relative;
+  width: 100%;
+}
+}
+
+@media print {
+.toc-content {
+  /* see https://github.com/w3c/csswg-drafts/issues/4434 */
+  float: right;
+}
+}
+
+.toc-content {
+  padding-left: 30px;
+  padding-right: 40px;
+}
+
+div.main-container {
+  max-width: 1200px;
+}
+
+div.tocify {
+  width: 20%;
+  max-width: 260px;
+  max-height: 85%;
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+  div.tocify {
+    width: 25%;
+  }
+}
+
+@media (max-width: 767px) {
+  div.tocify {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+.tocify ul, .tocify li {
+  line-height: 20px;
+}
+
+.tocify-subheader .tocify-item {
+  font-size: 0.90em;
+}
+
+.tocify .list-group-item {
+  border-radius: 0px;
+}
+
+
+</style>
+
+
+
+</head>
+
+<body>
+
+
+<div class="container-fluid main-container">
+
+
+<!-- setup 3col/9col grid for toc_float and main content  -->
+<div class="row-fluid">
+<div class="col-xs-12 col-sm-4 col-md-3">
+<div id="TOC" class="tocify">
+</div>
+</div>
+
+<div class="toc-content col-xs-12 col-sm-8 col-md-9">
+
+
+
+
+<div class="navbar navbar-default  navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">tlcf</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li>
+  <a href="index.html">Home</a>
+</li>
+<li>
+  <a href="about.html">About</a>
+</li>
+<li>
+  <a href="license.html">License</a>
+</li>
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        <li>
+  <a href="https://github.com/joonsukkang/tlcf">
+    <span class="fa fa-github"></span>
+     
+    Source code
+  </a>
+</li>
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<!-- Add a small amount of space between sections. -->
+<style type="text/css">
+div.section {
+  padding-top: 12px;
+}
+</style>
+
+<div class="fluid-row" id="header">
+
+
+
+<h1 class="title toc-ignore">Fluctuation Pattern + Anomaly: low-rank matrix factorization approach</h1>
+<h4 class="author">Joonsuk Kang</h4>
+<h4 class="date">2020-05-11</h4>
+
+</div>
+
+
+<p>
+<button type="button" class="btn btn-default btn-workflowr btn-workflowr-report" data-toggle="collapse" data-target="#workflowr-report">
+<span class="glyphicon glyphicon-list" aria-hidden="true"></span> workflowr <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span>
+</button>
+</p>
+<div id="workflowr-report" class="collapse">
+<ul class="nav nav-tabs">
+<li class="active">
+<a data-toggle="tab" href="#summary">Summary</a>
+</li>
+<li>
+<a data-toggle="tab" href="#checks"> Checks <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> </a>
+</li>
+<li>
+<a data-toggle="tab" href="#versions">Past versions</a>
+</li>
+</ul>
+<div class="tab-content">
+<div id="summary" class="tab-pane fade in active">
+<p>
+<strong>Last updated:</strong> 2020-05-13
+</p>
+<p>
+<strong>Checks:</strong> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> 7 <span class="glyphicon glyphicon-exclamation-sign text-danger" aria-hidden="true"></span> 0
+</p>
+<p>
+<strong>Knit directory:</strong> <code>tlcf/</code> <span class="glyphicon glyphicon-question-sign" aria-hidden="true" title="This is the local directory in which the code in this file was executed."> </span>
+</p>
+<p>
+This reproducible <a href="http://rmarkdown.rstudio.com">R Markdown</a> analysis was created with <a
+  href="https://github.com/jdblischak/workflowr">workflowr</a> (version 1.6.0). The <em>Checks</em> tab describes the reproducibility checks that were applied when the results were created. The <em>Past versions</em> tab lists the development history.
+</p>
+<hr>
+</div>
+<div id="checks" class="tab-pane fade">
+<div id="workflowr-checks" class="panel-group">
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRMarkdownfilestronguptodate"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>R Markdown file:</strong> up-to-date </a>
+</p>
+</div>
+<div id="strongRMarkdownfilestronguptodate" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great! Since the R Markdown file has been committed to the Git repository, you know the exact version of the code that produced these results.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongEnvironmentstrongempty"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Environment:</strong> empty </a>
+</p>
+</div>
+<div id="strongEnvironmentstrongempty" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! The global environment was empty. Objects defined in the global environment can affect the analysis in your R Markdown file in unknown ways. For reproduciblity it’s best to always run the code in an empty environment.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongSeedstrongcodesetseed20200324code"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Seed:</strong> <code>set.seed(20200324)</code> </a>
+</p>
+</div>
+<div id="strongSeedstrongcodesetseed20200324code" class="panel-collapse collapse">
+<div class="panel-body">
+<p>The command <code>set.seed(20200324)</code> was run prior to running the code in the R Markdown file. Setting a seed ensures that any results that rely on randomness, e.g. subsampling or permutations, are reproducible.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongSessioninformationstrongrecorded"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Session information:</strong> recorded </a>
+</p>
+</div>
+<div id="strongSessioninformationstrongrecorded" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! Recording the operating system, R version, and package versions is critical for reproducibility.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongCachestrongnone"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Cache:</strong> none </a>
+</p>
+</div>
+<div id="strongCachestrongnone" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Nice! There were no cached chunks for this analysis, so you can be confident that you successfully produced the results during this run.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongFilepathsstrongrelative"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>File paths:</strong> relative </a>
+</p>
+</div>
+<div id="strongFilepathsstrongrelative" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! Using relative paths to the files within your workflowr project makes it easier to run your code on other machines.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRepositoryversionstrongahrefhttpsgithubcomjoonsukkangtlcftree4b49317a9934a2c299c792490b9d7566c36e058etargetblank4b49317a"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Repository version:</strong> <a href="https://github.com/joonsukkang/tlcf/tree/4b49317a9934a2c299c792490b9d7566c36e058e" target="_blank">4b49317</a> </a>
+</p>
+</div>
+<div id="strongRepositoryversionstrongahrefhttpsgithubcomjoonsukkangtlcftree4b49317a9934a2c299c792490b9d7566c36e058etargetblank4b49317a" class="panel-collapse collapse">
+<div class="panel-body">
+<p>
+Great! You are using Git for version control. Tracking code development and connecting the code version to the results is critical for reproducibility. The version displayed above was the version of the Git repository at the time these results were generated. <br><br> Note that you need to be careful to ensure that all relevant files for the analysis have been committed to Git prior to generating the results (you can use <code>wflow_publish</code> or <code>wflow_git_commit</code>). workflowr only checks the R Markdown file, but you know if there are other scripts or data files that it depends on. Below is the status of the Git repository when the results were generated:
+</p>
+<pre><code>
+Ignored files:
+    Ignored:    .Rhistory
+    Ignored:    .Rproj.user/
+    Ignored:    analysis/figure/
+
+Untracked files:
+    Untracked:  analysis/index_updates.Rmd
+    Untracked:  analysis/origin_bimodality.Rmd
+    Untracked:  analysis/pattern_anomaly_tempcodes.Rmd
+    Untracked:  analysis/temp.Rmd
+    Untracked:  analysis/update_20200420.Rmd
+    Untracked:  code/altmin_fixX.m
+    Untracked:  code/run_altmin_bimodality.m
+    Untracked:  data/forecasting_data/
+    Untracked:  output/errors_p100m14_fixX.csv
+    Untracked:  test.txt
+
+Unstaged changes:
+    Modified:   code/wflow_commands.R
+
+</code></pre>
+<p>
+Note that any generated files, e.g. HTML, png, CSS, etc., are not included in this status report because it is ok for generated content to have uncommitted changes.
+</p>
+</div>
+</div>
+</div>
+</div>
+<hr>
+</div>
+<div id="versions" class="tab-pane fade">
+
+<p>
+These are the previous versions of the R Markdown and HTML files. If you’ve configured a remote Git repository (see <code>?wflow_git_remote</code>), click on the hyperlinks in the table below to view them.
+</p>
+<div class="table-responsive">
+<table class="table table-condensed table-hover">
+<thead>
+<tr>
+<th>
+File
+</th>
+<th>
+Version
+</th>
+<th>
+Author
+</th>
+<th>
+Date
+</th>
+<th>
+Message
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+<a href="https://github.com/joonsukkang/tlcf/blob/4b49317a9934a2c299c792490b9d7566c36e058e/analysis/pattern_anomaly.Rmd" target="_blank">4b49317</a>
+</td>
+<td>
+Joonsuk Kang
+</td>
+<td>
+2020-05-13
+</td>
+<td>
+Fluctuation Pattern + Anomaly: low-rank matrix factorization approach
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<hr>
+</div>
+</div>
+</div>
+<div id="leveraging-simulation-learning-fluctuation-patterns" class="section level1">
+<h1>Leveraging Simulation: Learning Fluctuation Patterns</h1>
+<p>Instead of <a href="stack_thoughts.html">using simulation data to learn parameter <span class="math inline">\(\beta\)</span></a>, we can use it to learn the “fluctuation pattern” in <span class="math inline">\(X\)</span>. While we have only 51 real data points (in train set), we have 2,040 more in simulation train set.</p>
+<p>This approach tackles two key issues in our problem: 1) significant correlation in <span class="math inline">\(X\)</span>, 2) restrictive assumption of linearly additive model.</p>
+<p>With singular value decomposition <span class="math inline">\(X=UDV^T=LF\)</span>, we can estimate “fluctuation patterns” or “factors” <span class="math inline">\(F=V^T\)</span> and observations’ factor loadings <span class="math inline">\(L=UD\)</span>. Intuitively, the fluctuation patterns capture shared geographical fluctuation structure of predictor values.</p>
+</div>
+<div id="detecting-anomalies-from-fluctuation-patterns-via-low-rank-matrix-factorization" class="section level1">
+<h1>Detecting Anomalies from Fluctuation Patterns via low-rank matrix factorization</h1>
+<p>We can concatenate observation and simulation data to leverage simulation: <span class="math display">\[
+X=
+\begin{bmatrix}
+   X_0\\
+    X_1 \\
+    X_2 \\
+    \dots \\
+   X_{40}
+\end{bmatrix}
+\]</span> where <span class="math inline">\(X_0 \in \mathbb{R}^{N\times p}=\mathbb{R}^{51 \times 900}\)</span> is the observation data and <span class="math inline">\(X_i \in \mathbb{R}^{51 \times 900}\)</span> is the data for <span class="math inline">\(i-\)</span>th simultation for <span class="math inline">\(i \in \{1,\dots,40\}\)</span>.</p>
+<p>The SVD is given as <span class="math inline">\(X=UDV^T\)</span> where <span class="math inline">\(U\in \mathbb{R}^{N\times p}\)</span>, <span class="math inline">\(D \in \mathbb{R}^{p \times p}\)</span>, and <span class="math inline">\(V \in \mathbb{R}^{p\times p}\)</span>. We can interpret SVD as matrix factorization: <span class="math inline">\(X=LF\)</span> with loading matrix <span class="math inline">\(L=UD\)</span> and factor matrix <span class="math inline">\(F=V^T\)</span>.</p>
+<p>The rank-<span class="math inline">\(q\)</span> approximation is obtained as <span class="math inline">\(X=\tilde{L}_q\tilde{F}_q+\tilde{E}_q\)</span> where <span class="math inline">\(\tilde{L}_q\)</span> is the first <span class="math inline">\(q\)</span> columns of <span class="math inline">\(L\)</span>, <span class="math inline">\(\tilde{F}_q\)</span> is the first <span class="math inline">\(q\)</span> rows of <span class="math inline">\(F\)</span>, and <span class="math inline">\(\tilde{E}_q=X-\tilde{L}_q\tilde{F}_q\)</span> is the “anomaly” (residual).</p>
+<p>We can reshape our parameter space as the union of following two sets: 1) The loadings for the <span class="math inline">\(q\)</span> fluctuation patterns and 2) the “anomalies” corresponding to the original <span class="math inline">\(p=900\)</span> predictors.</p>
+<p>So, for each observation, we have <span class="math inline">\(q\)</span> loading values and <span class="math inline">\(p=900\)</span> anomalies.</p>
+</div>
+<div id="two-benefits" class="section level1">
+<h1>Two Benefits</h1>
+<p>By removing fluctuation patterns in original predictor values, we can detect anomalies which are no longer highly correlated. We use anomalies instead of original predictor values so that it becomes easier to relate a predictor to the response.</p>
+<p>Another key advantage is that with the loadings in our model, we can incorporate important structure between predictor and response which are not linearly additive. Note the difference: in our model the response is linear in loadings, which in essence has an effect of complicated non-linear function of predictors.</p>
+</div>
+<div id="reality-checks" class="section level1">
+<h1>Reality Checks</h1>
+<div id="data" class="section level3">
+<h3>Data</h3>
+<pre class="r"><code>library(tidyverse)</code></pre>
+<pre><code>── Attaching packages ──────────────────────────────────────────────────────────────────────────── tidyverse 1.3.0 ──</code></pre>
+<pre><code>✓ ggplot2 3.3.0     ✓ purrr   0.3.3
+✓ tibble  2.1.3     ✓ dplyr   0.8.4
+✓ tidyr   1.0.2     ✓ stringr 1.4.0
+✓ readr   1.3.1     ✓ forcats 0.5.0</code></pre>
+<pre><code>── Conflicts ─────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
+x dplyr::filter() masks stats::filter()
+x dplyr::lag()    masks stats::lag()</code></pre>
+<pre class="r"><code>library(glmnet); library(doMC); registerDoMC(cores=6)</code></pre>
+<pre><code>Loading required package: Matrix</code></pre>
+<pre><code>
+Attaching package: &#39;Matrix&#39;</code></pre>
+<pre><code>The following objects are masked from &#39;package:tidyr&#39;:
+
+    expand, pack, unpack</code></pre>
+<pre><code>Loaded glmnet 3.0-2</code></pre>
+<pre><code>Loading required package: foreach</code></pre>
+<pre><code>
+Attaching package: &#39;foreach&#39;</code></pre>
+<pre><code>The following objects are masked from &#39;package:purrr&#39;:
+
+    accumulate, when</code></pre>
+<pre><code>Loading required package: iterators</code></pre>
+<pre><code>Loading required package: parallel</code></pre>
+<pre class="r"><code># precipitation data from abby
+X.o &lt;- as.matrix(read_csv(&quot;data/forecasting_data/data/X_obs.csv&quot;))</code></pre>
+<pre><code>Parsed with column specification:
+cols(
+  .default = col_double()
+)</code></pre>
+<pre><code>See spec(...) for full column specifications.</code></pre>
+<pre class="r"><code>X.s &lt;- as.matrix(read_csv(&quot;data/forecasting_data/data/X_sim.csv&quot;))</code></pre>
+<pre><code>Parsed with column specification:
+cols(
+  .default = col_double()
+)
+See spec(...) for full column specifications.</code></pre>
+<pre class="r"><code>Y.o &lt;- as.matrix(read_csv(&quot;data/forecasting_data/data/y_obs.csv&quot;))</code></pre>
+<pre><code>Parsed with column specification:
+cols(
+  `0` = col_double()
+)</code></pre>
+<pre class="r"><code>Y.s &lt;- as.matrix(read_csv(&quot;data/forecasting_data/data/y_sim.csv&quot;))</code></pre>
+<pre><code>Parsed with column specification:
+cols(
+  `0` = col_double(),
+  simulation = col_double()
+)</code></pre>
+<pre class="r"><code># test set
+X.test &lt;- X.o[52:79,] # years 1991-2018
+Y.test &lt;- Y.o[52:79]
+ 
+# train set with only observation data
+X.train0 &lt;- X.o[1:51,] # years 1940-1990
+Y.train0 &lt;- Y.o[1:51]
+
+Y.s.array &lt;- array(0, dim=c(51,1,40)) # use only first 51 rows: corresponding to the same years 1940-1990
+X.s.array &lt;- array(0, dim=c(51,900,40))
+for (i in 1:40){
+  Y.s.array[,,i] &lt;- Y.s[Y.s[,2]==i,1][1:51]
+  X.s.array[,,i] &lt;- X.s[X.s[,901]==i,1:900][1:51,]
+}
+for (i in 1:40){ # standardize (mean 0, sd 1)
+  Y.s.array[,,i] &lt;- scale(Y.s.array[,,i])
+  for (j in 1:900){ # standardize each column for each simulation
+    X.s.array[,j,i] &lt;- scale(X.s.array[,j,i])
+  }
+}
+
+# train set for obs+simulation data
+X.train.p &lt;- X.train0 
+Y.train.p &lt;- Y.train0
+for (i in 1:40){
+  X.train.p &lt;- rbind(X.train.p, X.s.array[,,i])
+  Y.train.p &lt;- c(Y.train.p, Y.s.array[,,i])
+}</code></pre>
+</div>
+<div id="covariance-of-x" class="section level3">
+<h3>Covariance of <span class="math inline">\(X\)</span></h3>
+<p>To use simulation data in estimating fluctuation patterns, we need to verify that the covariance matrix of <span class="math inline">\(X\)</span> in simulation data is similar to the one in observation data, especially considering the frustrating result on stacking/weighting schemes to use simulation data.</p>
+<pre class="r"><code>library(pheatmap); library(RColorBrewer)
+breaksList = seq(-1, 1.5, by = 0.1)
+
+# covariance of observation data
+pheatmap(cov(X.train0), cluster_rows=FALSE, cluster_cols=FALSE,
+         breaks=seq(-1,1.5,by=0.1),
+         color = colorRampPalette(rev(brewer.pal(n = 7, name = &quot;RdYlBu&quot;)))(length(breaksList)),
+         labels_row=&quot;&quot;, labels_col = &quot;&quot;, main=&quot;Heat Map: covariance matrix for obs only&quot;)</code></pre>
+<p><img src="figure/pattern_anomaly.Rmd/unnamed-chunk-2-1.png" width="480" style="display: block; margin: auto;" /></p>
+<pre class="r"><code># covariance of simulation data
+pheatmap(cov(X.train.p[52:nrow(X.train.p),]), cluster_rows=FALSE, cluster_cols=FALSE,
+         color = colorRampPalette(rev(brewer.pal(n = 7, name = &quot;RdYlBu&quot;)))(length(breaksList)),
+         breaks=seq(-1,1.5,by=0.1),
+         labels_row=&quot;&quot;, labels_col = &quot;&quot;, main=&quot;Heat Map: covariance matrix for sim only&quot;)</code></pre>
+<p><img src="figure/pattern_anomaly.Rmd/unnamed-chunk-2-2.png" width="480" style="display: block; margin: auto;" /></p>
+<p>The two covariance matrices look similar. Though we need to verify the utility of using simulation data empirically later, it looks fine to proceed.</p>
+</div>
+<div id="what-fluctuation-patterns-look-like" class="section level3">
+<h3>What fluctuation patterns look like</h3>
+<pre class="r"><code>svd0 &lt;- svd(X.train0) # obs only train set
+svd.p &lt;- svd(X.train.p) # obs+sim train set
+
+mat.L &lt;- svd.p[[&#39;u&#39;]] %*% diag(svd.p[[&#39;d&#39;]])
+mat.F.all &lt;- t(svd.p[[&#39;v&#39;]])
+mat.F0 &lt;- t(svd0[[&#39;v&#39;]]) # F matrix with obs-only train set</code></pre>
+<p>Figure below is the heat map for the first 20 fluctuation patterns. Each row corresponds to one fluctuation pattern and each column to one of the 900 predictors. Patterns (ordered by the size of singular values) start from capturing broader chunks and move on to capturing more detailed patterns.</p>
+<pre class="r"><code># first 20 factors (one row = one fluctuation pattern)
+pheatmap(data.frame(mat.F.all[1:20,]), cluster_rows=FALSE, cluster_cols=FALSE,
+         labels_col = &quot;&quot;,
+         main=&quot;Heat Map: First 20 Fluctuation Patterns&quot;
+         )</code></pre>
+<p><img src="figure/pattern_anomaly.Rmd/unnamed-chunk-4-1.png" width="672" style="display: block; margin: auto;" /></p>
+<p>From <span class="math inline">\(||X||^2=||UDV^T||^2=||D||^2=\sum_{i}d_i^2\)</span>, percentage explained by first <span class="math inline">\(q\)</span> factors: <span class="math inline">\(\frac{\sum_{i\leq q}d_i^2}{\sum_{i}d_i^2}\)</span>. Though there are 900 factors, first 10 factors explain 62% of the variations and first 20 explain 77%.</p>
+<pre class="r"><code>seq.temp &lt;- cumsum(svd.p[[&#39;d&#39;]]^2)
+seq.temp &lt;- seq.temp/last(seq.temp)
+data.frame(q=1:900,
+           explained = seq.temp) %&gt;%
+  filter(q&lt;=150) %&gt;%
+  ggplot(aes(x=q, y=explained))+geom_line()+geom_point()+
+  ggtitle(&quot;Percentage explained by first q patterns&quot;)</code></pre>
+<p><img src="figure/pattern_anomaly.Rmd/unnamed-chunk-5-1.png" width="672" style="display: block; margin: auto;" /></p>
+</div>
+</div>
+<div id="two-set-predictors-to-two-stage-regression" class="section level1">
+<h1>Two-set Predictors to Two-stage Regression</h1>
+<p>We have two sets of predictors: flucutation pattern loadings and anomalies. Here, we consider a two-step procedure. First, we regress loadings on response <span class="math inline">\(Y\)</span>. Then, we regress anomalies on the residuals from the first step.</p>
+<p>Note that we’re now fitting the model with <strong>observation test set only</strong> (simulation data was used for learning fluctuation patterns but is not used here in model fit).</p>
+<p>This approach acknowledges the hierarchy between the two sets and gives a preference to fluctuation loadings.</p>
+<p>We consider OLS, lasso, and ridge regression for the first step; lasso and ridge for the (high-dimensional) second step. For lasso/ridge, tuning parameter is chosen to minimize leave-one-out cross validation MSE.</p>
+<p>(We can recover loading by <span class="math inline">\(L=XF^T\)</span> from <span class="math inline">\(X=LF\)</span>; also calculate loading for test set by <span class="math inline">\(L_{test}=X_{test}F^T\)</span>.)</p>
+<pre class="r"><code>fit.twostep &lt;- function(rank_from=2, rank_to=30, step1, step2, mat.F=mat.F.all){
+  
+    rank.grid &lt;- rank_from:rank_to
+    mse.grid &lt;- rep(0, length(rank.grid))
+    mse.pred1.grid &lt;- rep(0, length(rank.grid))
+    
+    L.train0 &lt;- X.train0 %*% t(mat.F) # use learned fluctuation pattern
+    L.test &lt;- X.test %*% t(mat.F)
+    
+    for (ridx in 1:length(rank.grid)){
+      
+      q &lt;- rank.grid[ridx]
+      
+      Lq.train &lt;- L.train0[,1:q]
+      Fq &lt;- mat.F[1:q,]
+      Eq.train &lt;- X.train0 - Lq.train %*% Fq
+      
+      # Fit: first step
+      if(step1==&quot;ols&quot;){
+        fit.1 &lt;- lm(Y ~ ., data=data.frame(Y=Y.train0, Lq.train))
+        Y.step2 &lt;- fit.1$residuals
+        
+      } else if(step1==&quot;lasso&quot;){
+        fit.1 &lt;- cv.glmnet(Lq.train, Y.train0, nfolds=51, grouped=FALSE, 
+                             parallel=TRUE)
+        Y.step2 &lt;- Y.train0 - predict(fit.1, newx = Lq.train, s = &quot;lambda.min&quot;)
+        
+      } else if(step1==&quot;ridge&quot;){
+        fit.1 &lt;- cv.glmnet(Lq.train, Y.train0, nfolds=51, grouped=FALSE, 
+                           alpha=0,
+                             parallel=TRUE)
+        Y.step2 &lt;- Y.train0 - predict(fit.1, newx = Lq.train, s = &quot;lambda.min&quot;)
+        
+      }
+      
+      # Fit: second step
+      if(step2==&quot;lasso&quot;){
+        fit.2 &lt;- cv.glmnet(Eq.train, Y.step2, nfolds=51, grouped=FALSE, 
+                             parallel=TRUE)
+        
+      } else if(step2==&quot;ridge&quot;){
+        fit.2 &lt;- cv.glmnet(Eq.train, Y.step2, nfolds=51, grouped=FALSE, 
+                           alpha=0,
+                             parallel=TRUE)
+        
+      }
+      
+      # prediction
+      Lq.test &lt;- L.test[,1:q]
+      Eq.test &lt;- X.test - Lq.test %*% Fq
+    
+      
+      if(step1==&quot;ols&quot;){
+       pred.1 &lt;- predict(fit.1, newdata=data.frame(Lq.test))
+        
+      } else if(step1==&quot;lasso&quot;){
+        pred.1 &lt;- predict(fit.1, newx = Lq.test, s = &quot;lambda.min&quot;)
+        
+      } else if(step1==&quot;ridge&quot;){
+        pred.1 &lt;- predict(fit.1, newx = Lq.test, s = &quot;lambda.min&quot;)
+      }
+      
+        if(step2==&quot;lasso&quot;){
+        pred.2 &lt;- predict(fit.2, newx = Eq.test, s = &quot;lambda.min&quot;)
+        
+      } else if(step2==&quot;ridge&quot;){
+        pred.2 &lt;- predict(fit.2, newx = Eq.test, s = &quot;lambda.min&quot;)
+      }
+      
+      pred.twostep &lt;- pred.1+pred.2
+      
+      mse.grid[ridx] &lt;- mean((pred.twostep - Y.test)^2)
+      mse.pred1.grid[ridx] &lt;- mean((pred.1 - Y.test)^2)
+    }
+    
+    return(data.frame(q=rank.grid,
+               mse=mse.grid, mse.pred1=mse.pred1.grid,
+               step1=step1, step2=step2))
+}</code></pre>
+<pre class="r"><code>df.temp &lt;- rbind(
+  fit.twostep(step1=&quot;ols&quot;, step2=&quot;lasso&quot;),
+  fit.twostep(step1=&quot;ols&quot;, step2=&quot;ridge&quot;),
+  fit.twostep(step1=&quot;lasso&quot;, step2=&quot;lasso&quot;),
+  fit.twostep(step1=&quot;lasso&quot;, step2=&quot;ridge&quot;),
+  fit.twostep(step1=&quot;ridge&quot;, step2=&quot;lasso&quot;),
+  fit.twostep(step1=&quot;ridge&quot;, step2=&quot;ridge&quot;)
+)</code></pre>
+<div id="results" class="section level3">
+<h3>Results</h3>
+<pre class="r"><code>df.temp %&gt;% mutate(method = paste0(step1, &quot; + &quot;, step2)) %&gt;%
+  ggplot(aes(x=q, y=mse, col=method))+geom_line()+geom_point()+
+  scale_y_continuous(limits=c(0.7,1.6), breaks=seq(0.7,1.6,by=0.1))+
+  geom_abline(slope=0,intercept=1)+
+  ggtitle(&quot;Prediction MSE: learning Fluctuation Pattern w/ simulation data&quot;)</code></pre>
+<p><img src="figure/pattern_anomaly.Rmd/unnamed-chunk-8-1.png" width="672" style="display: block; margin: auto;" /></p>
+<p>The lowest MSE over the prediction set is achieved (0.74) when we use “ridge+lasso” method with rank <span class="math inline">\(q=10\)</span> approximation. At <span class="math inline">\(q=10\)</span>, “double ridge” (ridge+ridge) also has a low MSE 0.76. Considering that double ridge outperforms ridge+lasso for the neighbors (<span class="math inline">\(q\)</span> around 10), double ridge seems to be the more robust choice.</p>
+</div>
+<div id="compared-to-learning-fluctuation-pattern-f-with-observation-only-train-set" class="section level3">
+<h3>Compared to learning fluctuation pattern (F) with observation-only train set</h3>
+<pre class="r"><code>df.temp2 &lt;- rbind( # mat.F0 is the estimated matrix F when using only observation train set (51)
+  fit.twostep(step1=&quot;ols&quot;, step2=&quot;lasso&quot;, mat.F=mat.F0),
+  fit.twostep(step1=&quot;ols&quot;, step2=&quot;ridge&quot;, mat.F=mat.F0),
+  fit.twostep(step1=&quot;lasso&quot;, step2=&quot;lasso&quot;, mat.F=mat.F0),
+  fit.twostep(step1=&quot;lasso&quot;, step2=&quot;ridge&quot;, mat.F=mat.F0),
+  fit.twostep(step1=&quot;ridge&quot;, step2=&quot;lasso&quot;, mat.F=mat.F0),
+  fit.twostep(step1=&quot;ridge&quot;, step2=&quot;ridge&quot;, mat.F=mat.F0)
+)
+
+df.temp2 %&gt;% mutate(method = paste0(step1, &quot; + &quot;, step2)) %&gt;%
+  ggplot(aes(x=q, y=mse, col=method))+geom_line()+geom_point()+
+  scale_y_continuous(limits=c(0.7,1.6), breaks=seq(0.7,1.6,by=0.1))+
+  geom_abline(slope=0,intercept=1)+
+  ggtitle(&quot;Prediction MSE: learning Fluctuation Pattern w/o simulation data&quot;)</code></pre>
+<p><img src="figure/pattern_anomaly.Rmd/unnamed-chunk-9-1.png" width="672" style="display: block; margin: auto;" /></p>
+<p>The double ridge is the best method here as well, but its performance is much worse when not leveraging the simulation data. The lowest MSE is <span class="math inline">\(0.89\)</span> when <span class="math inline">\(q=10\)</span>, much larger compared to 0.76 when using the simulation data to learn the fluctuation pattern.</p>
+</div>
+<div id="all-the-improvement-comes-from-fluctuation-patterns-not-from-anomalies." class="section level3">
+<h3>All the improvement comes from fluctuation patterns, not from anomalies.</h3>
+<p>It turns out that the “double ridge” is identical to the “ridge on pattern loadings” for the first stage and do not predict anything on the second stage. The contribution of second stage to MSE is nonexistent in most cases.</p>
+<p>Here, the <code>mse</code> is the MSE of two-step prediction (prediction = prediction from first stage + prediction from second stage) and the <code>mse.pred1</code> is the MSE of first-stage-only prediction. The difference is shown in the last column.</p>
+<pre class="r"><code>df.temp %&gt;% mutate(method = paste0(step1, &quot; + &quot;, step2)) %&gt;%
+  filter(method==&quot;ridge + ridge&quot;) %&gt;% mutate(mse_diff = mse-mse.pred1) %&gt;%
+print()</code></pre>
+<pre><code>    q       mse mse.pred1 step1 step2        method      mse_diff
+1   2 0.9658816 0.9658816 ridge ridge ridge + ridge  0.000000e+00
+2   3 0.9283969 0.9283969 ridge ridge ridge + ridge  0.000000e+00
+3   4 0.9080013 0.9080013 ridge ridge ridge + ridge  0.000000e+00
+4   5 0.9096626 0.9096626 ridge ridge ridge + ridge  0.000000e+00
+5   6 0.9141465 0.9141465 ridge ridge ridge + ridge  0.000000e+00
+6   7 0.8744726 0.8744726 ridge ridge ridge + ridge  0.000000e+00
+7   8 0.8316318 0.8316318 ridge ridge ridge + ridge  0.000000e+00
+8   9 0.8172789 0.8172789 ridge ridge ridge + ridge  0.000000e+00
+9  10 0.7568353 0.7568353 ridge ridge ridge + ridge  0.000000e+00
+10 11 0.8255748 0.8255748 ridge ridge ridge + ridge  0.000000e+00
+11 12 0.8391361 0.8391361 ridge ridge ridge + ridge  0.000000e+00
+12 13 0.8432278 0.8432278 ridge ridge ridge + ridge  0.000000e+00
+13 14 0.8505843 0.8505843 ridge ridge ridge + ridge  0.000000e+00
+14 15 0.8472260 0.8472260 ridge ridge ridge + ridge  0.000000e+00
+15 16 0.8858917 0.8858917 ridge ridge ridge + ridge  0.000000e+00
+16 17 0.9063753 0.9063753 ridge ridge ridge + ridge  0.000000e+00
+17 18 0.9181573 0.9183146 ridge ridge ridge + ridge -1.573241e-04
+18 19 0.9211121 0.9201912 ridge ridge ridge + ridge  9.208281e-04
+19 20 0.9493180 0.9493180 ridge ridge ridge + ridge  0.000000e+00
+20 21 0.9816894 0.9816894 ridge ridge ridge + ridge  0.000000e+00
+21 22 1.0199455 1.0199455 ridge ridge ridge + ridge  0.000000e+00
+22 23 1.0205480 1.0205480 ridge ridge ridge + ridge  0.000000e+00
+23 24 1.0296304 1.0296304 ridge ridge ridge + ridge  0.000000e+00
+24 25 1.0504451 1.0504451 ridge ridge ridge + ridge  0.000000e+00
+25 26 1.0510744 1.0510744 ridge ridge ridge + ridge  0.000000e+00
+26 27 1.0307100 1.0307100 ridge ridge ridge + ridge  0.000000e+00
+27 28 0.9983280 0.9983280 ridge ridge ridge + ridge -1.110223e-16
+28 29 1.0013410 1.0013410 ridge ridge ridge + ridge  0.000000e+00
+29 30 1.0268529 1.0268529 ridge ridge ridge + ridge  0.000000e+00</code></pre>
+<p>Let’s revisit the “ridge + lasso” result. Comparing the double ridge and ridge+lasso, we can say that the contribution of the second-stage lasso is harmful around <span class="math inline">\(q=10\)</span> because double ridge is identical to first-stage ridge used in ridge+lasso procedure.</p>
+<p><strong>However, we shouldn’t ignore the potential benefit of the 2nd-step.</strong> In this specific probelm, the best model defaulted on the second step. But it does not necessarily exclude the possibility that an anomaly can have a significant effect on the response.</p>
+</div>
+<div id="then-how-about-just-single-regression" class="section level3">
+<h3>Then, how about just single regression?</h3>
+<p>If we put both patterns and anomalies into one predictor set and run a single regression, the model performance becomes much worse. We find that the two-step approach has an advantage because we are utilizing the fact that each learned fluctuation patterns would be more relevant than each of the anomalies.</p>
+<p>That being said, we could still benefit from integrating this two-stage regression into a single regression if we encode this hierarchy of the predictor sets.</p>
+<pre class="r"><code>  rank.grid &lt;- 2:150    
+  mse.lasso.grid &lt;- rep(0, length(rank.grid))
+  mse.ridge.grid &lt;- rep(0, length(rank.grid))
+  mat.F &lt;- mat.F.all
+  
+  L.train0 &lt;- X.train0 %*% t(mat.F) # use learned fluctuation pattern
+  L.test &lt;- X.test %*% t(mat.F)
+  
+  for (ridx in 1:length(rank.grid)){
+    
+    q &lt;- rank.grid[ridx]
+    
+    Lq.train &lt;- L.train0[,1:q]
+    Fq &lt;- mat.F[1:q,]
+    Eq.train &lt;- X.train0 - Lq.train %*% Fq
+    
+    fit.single.ridge &lt;- cv.glmnet(cbind(Lq.train, Eq.train), Y.train0, nfolds=51, grouped=FALSE, 
+                            alpha=0,
+                            parallel=TRUE)
+    fit.single.lasso &lt;- cv.glmnet(cbind(Lq.train, Eq.train), Y.train0, nfolds=51, grouped=FALSE, 
+                            parallel=TRUE)
+    # prediction
+    Lq.test &lt;- L.test[,1:q]
+    Eq.test &lt;- X.test - Lq.test %*% Fq
+    
+ 
+    pred.single.ridge &lt;- predict(fit.single.ridge, newx = cbind(Lq.test, Eq.test), s = &quot;lambda.min&quot;)
+    pred.single.lasso &lt;- predict(fit.single.lasso, newx = cbind(Lq.test, Eq.test), s = &quot;lambda.min&quot;)
+  
+    
+    mse.ridge.grid[ridx] &lt;- mean((pred.single.ridge - Y.test)^2)
+    mse.lasso.grid[ridx] &lt;- mean((pred.single.lasso - Y.test)^2)
+
+  }
+  
+  ggplot()+
+    geom_line(aes(x=rank.grid, y=mse.ridge.grid, col=&quot;single ridge&quot;))+
+    geom_line(aes(x=rank.grid, y=mse.lasso.grid, col=&quot;single lasso&quot;))+
+    xlab(&quot;q&quot;)+ylab(&quot;mse&quot;)+
+    geom_abline(slope=0,intercept=1)+
+    ggtitle(&quot;Prediction MSE: single-step results&quot;)</code></pre>
+<p><img src="figure/pattern_anomaly.Rmd/unnamed-chunk-11-1.png" width="672" style="display: block; margin: auto;" /></p>
+</div>
+<div id="decorrealted-anomalies" class="section level3">
+<h3>Decorrealted Anomalies</h3>
+<p>Under the empirically chosen <span class="math inline">\(q=10\)</span>, we can check that the anomalies (residual <span class="math inline">\(E_q\)</span> from rank-<span class="math inline">\(q\)</span> matrix factorization) over the observation train set are no longer severely correlated.</p>
+<pre class="r"><code>L.train0 &lt;- X.train0 %*% t(mat.F.all) # use learned fluctuation pattern
+q &lt;- 10
+Lq.train &lt;- L.train0[,1:q]
+Fq &lt;- mat.F[1:q,]
+Eq.train &lt;- X.train0 - Lq.train %*% Fq
+
+# covariance of observation data
+pheatmap(cov(Eq.train), cluster_rows=FALSE, cluster_cols=FALSE,
+         breaks=seq(-1,1.5,by=0.1),
+         color = colorRampPalette(rev(brewer.pal(n = 7, name = &quot;RdYlBu&quot;)))(length(breaksList)),
+         labels_row=&quot;&quot;, labels_col = &quot;&quot;, main=&quot;Heat Map: covariance matrix for anomalies (obs train set)&quot;)</code></pre>
+<p><img src="figure/pattern_anomaly.Rmd/unnamed-chunk-12-1.png" width="672" style="display: block; margin: auto;" /></p>
+<br>
+<p>
+<button type="button" class="btn btn-default btn-workflowr btn-workflowr-sessioninfo" data-toggle="collapse" data-target="#workflowr-sessioninfo" style="display: block;">
+<span class="glyphicon glyphicon-wrench" aria-hidden="true"></span> Session information
+</button>
+</p>
+<div id="workflowr-sessioninfo" class="collapse">
+<pre class="r"><code>sessionInfo()</code></pre>
+<pre><code>R version 3.6.1 (2019-07-05)
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+Running under: macOS Catalina 10.15.4
+
+Matrix products: default
+BLAS:   /Library/Frameworks/R.framework/Versions/3.6/Resources/lib/libRblas.0.dylib
+LAPACK: /Library/Frameworks/R.framework/Versions/3.6/Resources/lib/libRlapack.dylib
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+attached base packages:
+[1] parallel  stats     graphics  grDevices utils     datasets  methods  
+[8] base     
+
+other attached packages:
+ [1] RColorBrewer_1.1-2 pheatmap_1.0.12    doMC_1.3.6         iterators_1.0.12  
+ [5] foreach_1.4.8      glmnet_3.0-2       Matrix_1.2-18      forcats_0.5.0     
+ [9] stringr_1.4.0      dplyr_0.8.4        purrr_0.3.3        readr_1.3.1       
+[13] tidyr_1.0.2        tibble_2.1.3       ggplot2_3.3.0      tidyverse_1.3.0   
+[17] workflowr_1.6.0   
+
+loaded via a namespace (and not attached):
+ [1] Rcpp_1.0.4.6     lubridate_1.7.4  lattice_0.20-38  assertthat_0.2.1
+ [5] rprojroot_1.3-2  digest_0.6.25    R6_2.4.1         cellranger_1.1.0
+ [9] backports_1.1.5  reprex_0.3.0     evaluate_0.14    httr_1.4.1      
+[13] pillar_1.4.3     rlang_0.4.5      readxl_1.3.1     rstudioapi_0.11 
+[17] whisker_0.4      rmarkdown_2.1    labeling_0.3     munsell_0.5.0   
+[21] broom_0.5.5      compiler_3.6.1   httpuv_1.5.2     modelr_0.1.6    
+[25] xfun_0.12        pkgconfig_2.0.3  shape_1.4.4      htmltools_0.4.0 
+[29] tidyselect_1.0.0 codetools_0.2-16 fansi_0.4.1      crayon_1.3.4    
+[33] dbplyr_1.4.2     withr_2.1.2      later_1.0.0      grid_3.6.1      
+[37] nlme_3.1-143     jsonlite_1.6.1   gtable_0.3.0     lifecycle_0.2.0 
+[41] DBI_1.1.0        git2r_0.26.1     magrittr_1.5     scales_1.1.0    
+[45] cli_2.0.2        stringi_1.4.6    farver_2.0.3     fs_1.3.2        
+[49] promises_1.1.0   xml2_1.2.2       generics_0.0.2   vctrs_0.2.3     
+[53] tools_3.6.1      glue_1.3.2       hms_0.5.3        yaml_2.2.1      
+[57] colorspace_1.4-1 rvest_0.3.5      knitr_1.28       haven_2.2.0     </code></pre>
+</div>
+</div>
+</div>
+
+
+<!-- Adjust MathJax settings so that all math formulae are shown using
+TeX fonts only; see
+http://docs.mathjax.org/en/latest/configuration.html.  This will make
+the presentation more consistent at the cost of the webpage sometimes
+taking slightly longer to load. Note that this only works because the
+footer is added to webpages before the MathJax javascript. -->
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    "HTML-CSS": { availableFonts: ["TeX"] }
+  });
+</script>
+
+
+</div>
+</div>
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- tabsets -->
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open')
+  });
+});
+</script>
+
+<!-- code folding -->
+
+<script>
+$(document).ready(function ()  {
+
+    // move toc-ignore selectors from section div to header
+    $('div.section.toc-ignore')
+        .removeClass('toc-ignore')
+        .children('h1,h2,h3,h4,h5').addClass('toc-ignore');
+
+    // establish options
+    var options = {
+      selectors: "h1,h2,h3",
+      theme: "bootstrap3",
+      context: '.toc-content',
+      hashGenerator: function (text) {
+        return text.replace(/[.\\/?&!#<>]/g, '').replace(/\s/g, '_').toLowerCase();
+      },
+      ignoreSelector: ".toc-ignore",
+      scrollTo: 0
+    };
+    options.showAndHide = true;
+    options.smoothScroll = true;
+
+    // tocify
+    var toc = $("#TOC").tocify(options).data("toc-tocify");
+});
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
