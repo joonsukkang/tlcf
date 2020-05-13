@@ -1,0 +1,120 @@
+---
+title: "Thoughts on stacked/weighted/data-sharing lasso"
+author: "Joonsuk Kang"
+date: "2020-05-11"
+output: workflowr::wflow_html
+editor_options:
+  chunk_output_type: console
+---
+
+
+In the [previous analysis](stack_weighted_datashared.html), we tried stacking, weighting, and data-sharing approaches for lasso and ridge regression, but failed to find a way to improve prediction performance using simulation data.
+
+
+# What's happening?
+
+In these approaches, we assumed that our parameter of interest $\beta$ is the parameter for observation data and is shared with simulation data; for each simulation $i \in \{1,\dots,40\}$, its parameter is given as $\beta_i=\beta+\Delta_i$ with small $||\Delta||_i$.
+
+If this assumption does not hold, then trying to leverage simulation data to learn the linear relationship between $X$ and $Y$ may not succeed.
+
+Let's take a look at the data and previous fitted lasso/ridge results.
+
+
+# Import Data
+
+```{r}
+library(tidyverse)
+library(glmnet); library(doMC); registerDoMC(cores=6)
+
+# precipitation data from abby
+X.o <- as.matrix(read_csv("data/forecasting_data/data/X_obs.csv"))
+X.s <- as.matrix(read_csv("data/forecasting_data/data/X_sim.csv"))
+Y.o <- as.matrix(read_csv("data/forecasting_data/data/y_obs.csv"))
+Y.s <- as.matrix(read_csv("data/forecasting_data/data/y_sim.csv"))
+
+# test set
+X.test <- X.o[52:79,] # years 1991-2018
+Y.test <- Y.o[52:79]
+ 
+# train set with only observation data
+X.train0 <- X.o[1:51,] # years 1940-1990
+Y.train0 <- Y.o[1:51]
+
+Y.s.array <- array(0, dim=c(51,1,40)) # use only first 51 rows: corresponding to the same years 1940-1990
+X.s.array <- array(0, dim=c(51,900,40))
+for (i in 1:40){
+  Y.s.array[,,i] <- Y.s[Y.s[,2]==i,1][1:51]
+  X.s.array[,,i] <- X.s[X.s[,901]==i,1:900][1:51,]
+}
+for (i in 1:40){ # standardize (mean 0, sd 1)
+  Y.s.array[,,i] <- scale(Y.s.array[,,i])
+  for (j in 1:900){ # standardize each column for each simulation
+    X.s.array[,j,i] <- scale(X.s.array[,j,i])
+  }
+}
+
+# train set for obs+simulation data
+X.train.p <- X.train0 
+Y.train.p <- Y.train0
+for (i in 1:40){
+  X.train.p <- rbind(X.train.p, X.s.array[,,i])
+  Y.train.p <- c(Y.train.p, Y.s.array[,,i])
+}
+
+```
+
+# Cross Validation MSE from Lasso
+
+For our train set, we have 51 observation data points and 2040 (=40*51) simulation data points with 900 predictors. The lasso, the go-to technique for high-dimensional problem, provides a way to fit an over-determined regression problem. Given a sequence of tuning parameter ($\lambda$) values , we iteratively fit lasso and empirically choose the best tuning pararmeter value, which minimizes cross-validation mean squared errors.
+
+The figure below shows the MSE obtained from cross validation; point estiamtes are shown in red dots along with its confidence interval. The lower X axis corresponds to the size of tuning parameter in log scale, and the upper X axis to the number of nonzero parameter estimates with the given tuning parameter.
+
+```{r}
+# observation data only
+cv.single <- cv.glmnet(X.train0, Y.train0, nfolds=51, grouped=FALSE, 
+                       parallel=TRUE) # observation train data has 51 data points: LOOCV = 51fold
+plot(cv.single)
+
+# simulation data only
+cv.sim <- cv.glmnet(X.train.p[52:nrow(X.train.p),], Y.train.p[52:length(Y.train.p)], nfolds=5, 
+                       parallel=TRUE) 
+plot(cv.sim)
+```
+
+By cross validaiton, we calculate MSE over train set, hoping that it can be a good proxy for the MSE over test set (and population). The train set and test set may be heterogeneous, thus to make a model "work well" in the test set, we need the model to "work well" at least within the train set in cross-validation setting.
+
+The lasso model with observation-only train set has smallest CV MSE when $\log(\lambda)=-1.70$; the MSE is 0.60. However, the mean cross-validated error has a different shape in simulation-only train set. Here, the smallest CV MSE is 0.98, not much different from 1. Note that when $\lambda$ is large enough, no variable is selected and the MSE becomes 1.
+
+This makes us think that there may exist a fundamental difference between the joint distribution of $(X,Y)$ in observation data and simulation data. Especially, the figure for simulation data suggests that the best model is just a null model--without any predictors. Previously, we thought that the parameter for $i-$th simulation run is $\beta_i=\beta+\Delta_i$. This result could be interpreted as there is no such relationship between observation and simulation data: $\beta_i$ is merely $\beta_i=\Delta_i$; and does not share any information. 
+
+One may think that the difference comes from the difference of the set size: the "one-set" (observation; 51 data points) vs "40-set" (simulations; 2040 data points). To check this, we plotted the CV MSE for each of the 40 simulation runs; a line corresponds to a run in the figure below. Now we have same set size for each of the lines. We see that few of the 40 lines has a minimum fairly smaller than 1. Many of the 40 runs also suggest that the null model is the best model with lasso penalty: $\hat{\beta_i}=\hat{\Delta}_i=0$. Note that in this individual plot, we are not enforcing that a same set of predictors should be selected, as it was the case for fitting a lasso with all 40 runs.
+
+```{r}
+# individual simulation runs
+df.temp <- data.frame()
+for (simidx in 1:40){
+  X.train.temp <- X.train.p[(51*simidx+1):(51*(simidx+1)),]
+  Y.train.temp <- Y.train.p[(51*simidx+1):(51*(simidx+1))]
+  cv.sim.temp <- cv.glmnet(X.train.temp, Y.train.temp, nfolds=51, grouped=FALSE, 
+                       parallel=TRUE) # observation train data has 51 data points: LOOCV = 51fold
+  
+  df.temp <- rbind(df.temp,
+                   data.frame(simidx=simidx,
+                              lambda=cv.sim.temp[["lambda"]],
+                              mse=cv.sim.temp[["cvm"]]) 
+                   )
+}
+df.temp %>% mutate(loglambda=log(lambda)) %>%
+  ggplot()+geom_line(aes(x=loglambda, y=mse, group=simidx), alpha=0.2)+
+  geom_abline(intercept=1, slope=0, col='red')+scale_y_continuous(breaks=c(0.5,1,2,3))+
+  ggtitle("CV MSE for individual simulation runs")
+```
+
+# Thoughts
+
+To summarize, with lasso, we can make a better-than-null prediction when trained on observation-only train set. However, null model is the best model when trained on simulation-only train set and also for many of 40 runs.
+
+Lasso fits a specific class of models (linearly additive model) with a specific error function (L2) and a specific form of penalty (L1 penalty). 
+
+So, if we are using lasso, we may not leverage much from including simulation data sets in the train set. The joint distribution $(X,Y)$ could be quite different.
+
