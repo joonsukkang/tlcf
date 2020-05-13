@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+
+<meta name="author" content="Joonsuk Kang" />
+
+<meta name="date" content="2020-05-11" />
+
+<title>Thoughts on stacked/weighted/data-sharing lasso</title>
+
+<script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="site_libs/bootstrap-3.3.5/css/cosmo.min.css" rel="stylesheet" />
+<script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<script src="site_libs/jqueryui-1.11.4/jquery-ui.min.js"></script>
+<link href="site_libs/tocify-1.9.1/jquery.tocify.css" rel="stylesheet" />
+<script src="site_libs/tocify-1.9.1/jquery.tocify.js"></script>
+<script src="site_libs/navigation-1.1/tabsets.js"></script>
+<link href="site_libs/highlightjs-9.12.0/textmate.css" rel="stylesheet" />
+<script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
+<link href="site_libs/font-awesome-5.1.0/css/all.css" rel="stylesheet" />
+<link href="site_libs/font-awesome-5.1.0/css/v4-shims.css" rel="stylesheet" />
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css">
+  pre:not([class]) {
+    background-color: white;
+  }
+</style>
+<script type="text/javascript">
+if (window.hljs) {
+  hljs.configure({languages: []});
+  hljs.initHighlightingOnLoad();
+  if (document.readyState && document.readyState === "complete") {
+    window.setTimeout(function() { hljs.initHighlighting(); }, 0);
+  }
+}
+</script>
+
+
+
+<style type="text/css">
+h1 {
+  font-size: 34px;
+}
+h1.title {
+  font-size: 38px;
+}
+h2 {
+  font-size: 30px;
+}
+h3 {
+  font-size: 24px;
+}
+h4 {
+  font-size: 18px;
+}
+h5 {
+  font-size: 16px;
+}
+h6 {
+  font-size: 12px;
+}
+.table th:not([align]) {
+  text-align: left;
+}
+</style>
+
+
+
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+code {
+  color: inherit;
+  background-color: rgba(0, 0, 0, 0.04);
+}
+img {
+  max-width:100%;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+.html-widget {
+  margin-bottom: 20px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+summary {
+  display: list-item;
+}
+</style>
+
+
+<style type="text/css">
+/* padding for bootstrap navbar */
+body {
+  padding-top: 51px;
+  padding-bottom: 40px;
+}
+/* offset scroll position for anchor links (for fixed navbar)  */
+.section h1 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h2 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h3 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h4 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h5 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h6 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.dropdown-submenu {
+  position: relative;
+}
+.dropdown-submenu>.dropdown-menu {
+  top: 0;
+  left: 100%;
+  margin-top: -6px;
+  margin-left: -1px;
+  border-radius: 0 6px 6px 6px;
+}
+.dropdown-submenu:hover>.dropdown-menu {
+  display: block;
+}
+.dropdown-submenu>a:after {
+  display: block;
+  content: " ";
+  float: right;
+  width: 0;
+  height: 0;
+  border-color: transparent;
+  border-style: solid;
+  border-width: 5px 0 5px 5px;
+  border-left-color: #cccccc;
+  margin-top: 5px;
+  margin-right: -10px;
+}
+.dropdown-submenu:hover>a:after {
+  border-left-color: #ffffff;
+}
+.dropdown-submenu.pull-left {
+  float: none;
+}
+.dropdown-submenu.pull-left>.dropdown-menu {
+  left: -100%;
+  margin-left: 10px;
+  border-radius: 6px 0 6px 6px;
+}
+</style>
+
+<script>
+// manage active state of menu based on current page
+$(document).ready(function () {
+  // active menu anchor
+  href = window.location.pathname
+  href = href.substr(href.lastIndexOf('/') + 1)
+  if (href === "")
+    href = "index.html";
+  var menuAnchor = $('a[href="' + href + '"]');
+
+  // mark it active
+  menuAnchor.parent().addClass('active');
+
+  // if it's got a parent navbar menu mark it active as well
+  menuAnchor.closest('li.dropdown').addClass('active');
+});
+</script>
+
+<!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "&#xe258;";
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+  background-color: transparent;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
+<!-- code folding -->
+
+
+
+<style type="text/css">
+
+#TOC {
+  margin: 25px 0px 20px 0px;
+}
+@media (max-width: 768px) {
+#TOC {
+  position: relative;
+  width: 100%;
+}
+}
+
+@media print {
+.toc-content {
+  /* see https://github.com/w3c/csswg-drafts/issues/4434 */
+  float: right;
+}
+}
+
+.toc-content {
+  padding-left: 30px;
+  padding-right: 40px;
+}
+
+div.main-container {
+  max-width: 1200px;
+}
+
+div.tocify {
+  width: 20%;
+  max-width: 260px;
+  max-height: 85%;
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+  div.tocify {
+    width: 25%;
+  }
+}
+
+@media (max-width: 767px) {
+  div.tocify {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+.tocify ul, .tocify li {
+  line-height: 20px;
+}
+
+.tocify-subheader .tocify-item {
+  font-size: 0.90em;
+}
+
+.tocify .list-group-item {
+  border-radius: 0px;
+}
+
+
+</style>
+
+
+
+</head>
+
+<body>
+
+
+<div class="container-fluid main-container">
+
+
+<!-- setup 3col/9col grid for toc_float and main content  -->
+<div class="row-fluid">
+<div class="col-xs-12 col-sm-4 col-md-3">
+<div id="TOC" class="tocify">
+</div>
+</div>
+
+<div class="toc-content col-xs-12 col-sm-8 col-md-9">
+
+
+
+
+<div class="navbar navbar-default  navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">tlcf</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li>
+  <a href="index.html">Home</a>
+</li>
+<li>
+  <a href="about.html">About</a>
+</li>
+<li>
+  <a href="license.html">License</a>
+</li>
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        <li>
+  <a href="https://github.com/joonsukkang/tlcf">
+    <span class="fa fa-github"></span>
+     
+    Source code
+  </a>
+</li>
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<!-- Add a small amount of space between sections. -->
+<style type="text/css">
+div.section {
+  padding-top: 12px;
+}
+</style>
+
+<div class="fluid-row" id="header">
+
+
+
+<h1 class="title toc-ignore">Thoughts on stacked/weighted/data-sharing lasso</h1>
+<h4 class="author">Joonsuk Kang</h4>
+<h4 class="date">2020-05-11</h4>
+
+</div>
+
+
+<p>
+<button type="button" class="btn btn-default btn-workflowr btn-workflowr-report" data-toggle="collapse" data-target="#workflowr-report">
+<span class="glyphicon glyphicon-list" aria-hidden="true"></span> workflowr <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span>
+</button>
+</p>
+<div id="workflowr-report" class="collapse">
+<ul class="nav nav-tabs">
+<li class="active">
+<a data-toggle="tab" href="#summary">Summary</a>
+</li>
+<li>
+<a data-toggle="tab" href="#checks"> Checks <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> </a>
+</li>
+<li>
+<a data-toggle="tab" href="#versions">Past versions</a>
+</li>
+</ul>
+<div class="tab-content">
+<div id="summary" class="tab-pane fade in active">
+<p>
+<strong>Last updated:</strong> 2020-05-13
+</p>
+<p>
+<strong>Checks:</strong> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> 7 <span class="glyphicon glyphicon-exclamation-sign text-danger" aria-hidden="true"></span> 0
+</p>
+<p>
+<strong>Knit directory:</strong> <code>tlcf/</code> <span class="glyphicon glyphicon-question-sign" aria-hidden="true" title="This is the local directory in which the code in this file was executed."> </span>
+</p>
+<p>
+This reproducible <a href="http://rmarkdown.rstudio.com">R Markdown</a> analysis was created with <a
+  href="https://github.com/jdblischak/workflowr">workflowr</a> (version 1.6.0). The <em>Checks</em> tab describes the reproducibility checks that were applied when the results were created. The <em>Past versions</em> tab lists the development history.
+</p>
+<hr>
+</div>
+<div id="checks" class="tab-pane fade">
+<div id="workflowr-checks" class="panel-group">
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRMarkdownfilestronguptodate"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>R Markdown file:</strong> up-to-date </a>
+</p>
+</div>
+<div id="strongRMarkdownfilestronguptodate" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great! Since the R Markdown file has been committed to the Git repository, you know the exact version of the code that produced these results.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongEnvironmentstrongempty"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Environment:</strong> empty </a>
+</p>
+</div>
+<div id="strongEnvironmentstrongempty" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! The global environment was empty. Objects defined in the global environment can affect the analysis in your R Markdown file in unknown ways. For reproduciblity it’s best to always run the code in an empty environment.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongSeedstrongcodesetseed20200324code"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Seed:</strong> <code>set.seed(20200324)</code> </a>
+</p>
+</div>
+<div id="strongSeedstrongcodesetseed20200324code" class="panel-collapse collapse">
+<div class="panel-body">
+<p>The command <code>set.seed(20200324)</code> was run prior to running the code in the R Markdown file. Setting a seed ensures that any results that rely on randomness, e.g. subsampling or permutations, are reproducible.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongSessioninformationstrongrecorded"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Session information:</strong> recorded </a>
+</p>
+</div>
+<div id="strongSessioninformationstrongrecorded" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! Recording the operating system, R version, and package versions is critical for reproducibility.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongCachestrongnone"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Cache:</strong> none </a>
+</p>
+</div>
+<div id="strongCachestrongnone" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Nice! There were no cached chunks for this analysis, so you can be confident that you successfully produced the results during this run.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongFilepathsstrongrelative"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>File paths:</strong> relative </a>
+</p>
+</div>
+<div id="strongFilepathsstrongrelative" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! Using relative paths to the files within your workflowr project makes it easier to run your code on other machines.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRepositoryversionstrongahrefhttpsgithubcomjoonsukkangtlcftreefc2eea1d5ea100a3a81cd7fce885fd7fa51c5240targetblankfc2eea1a"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Repository version:</strong> <a href="https://github.com/joonsukkang/tlcf/tree/fc2eea1d5ea100a3a81cd7fce885fd7fa51c5240" target="_blank">fc2eea1</a> </a>
+</p>
+</div>
+<div id="strongRepositoryversionstrongahrefhttpsgithubcomjoonsukkangtlcftreefc2eea1d5ea100a3a81cd7fce885fd7fa51c5240targetblankfc2eea1a" class="panel-collapse collapse">
+<div class="panel-body">
+<p>
+Great! You are using Git for version control. Tracking code development and connecting the code version to the results is critical for reproducibility. The version displayed above was the version of the Git repository at the time these results were generated. <br><br> Note that you need to be careful to ensure that all relevant files for the analysis have been committed to Git prior to generating the results (you can use <code>wflow_publish</code> or <code>wflow_git_commit</code>). workflowr only checks the R Markdown file, but you know if there are other scripts or data files that it depends on. Below is the status of the Git repository when the results were generated:
+</p>
+<pre><code>
+Ignored files:
+    Ignored:    .Rhistory
+    Ignored:    .Rproj.user/
+
+Untracked files:
+    Untracked:  analysis/index_updates.Rmd
+    Untracked:  analysis/origin_bimodality.Rmd
+    Untracked:  analysis/pattern_anomaly.Rmd
+    Untracked:  analysis/temp.Rmd
+    Untracked:  analysis/update_20200420.Rmd
+    Untracked:  code/altmin_fixX.m
+    Untracked:  code/run_altmin_bimodality.m
+    Untracked:  data/forecasting_data/
+    Untracked:  output/errors_p100m14_fixX.csv
+    Untracked:  test.txt
+
+Unstaged changes:
+    Modified:   code/wflow_commands.R
+
+</code></pre>
+<p>
+Note that any generated files, e.g. HTML, png, CSS, etc., are not included in this status report because it is ok for generated content to have uncommitted changes.
+</p>
+</div>
+</div>
+</div>
+</div>
+<hr>
+</div>
+<div id="versions" class="tab-pane fade">
+
+<p>
+These are the previous versions of the R Markdown and HTML files. If you’ve configured a remote Git repository (see <code>?wflow_git_remote</code>), click on the hyperlinks in the table below to view them.
+</p>
+<div class="table-responsive">
+<table class="table table-condensed table-hover">
+<thead>
+<tr>
+<th>
+File
+</th>
+<th>
+Version
+</th>
+<th>
+Author
+</th>
+<th>
+Date
+</th>
+<th>
+Message
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+<a href="https://github.com/joonsukkang/tlcf/blob/fc2eea1d5ea100a3a81cd7fce885fd7fa51c5240/analysis/stack_thoughts.Rmd" target="_blank">fc2eea1</a>
+</td>
+<td>
+Joonsuk Kang
+</td>
+<td>
+2020-05-13
+</td>
+<td>
+Thoughts on stacked/weighted/data-sharing lasso
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<hr>
+</div>
+</div>
+</div>
+<p>In the <a href="stack_weighted_datashared.html">previous analysis</a>, we tried stacking, weighting, and data-sharing approaches for lasso and ridge regression, but failed to find a way to improve prediction performance using simulation data.</p>
+<div id="whats-happening" class="section level1">
+<h1>What’s happening?</h1>
+<p>In these approaches, we assumed that our parameter of interest <span class="math inline">\(\beta\)</span> is the parameter for observation data and is shared with simulation data; for each simulation <span class="math inline">\(i \in \{1,\dots,40\}\)</span>, its parameter is given as <span class="math inline">\(\beta_i=\beta+\Delta_i\)</span> with small <span class="math inline">\(||\Delta||_i\)</span>.</p>
+<p>If this assumption does not hold, then trying to leverage simulation data to learn the linear relationship between <span class="math inline">\(X\)</span> and <span class="math inline">\(Y\)</span> may not succeed.</p>
+<p>Let’s take a look at the data and previous fitted lasso/ridge results.</p>
+</div>
+<div id="import-data" class="section level1">
+<h1>Import Data</h1>
+<pre class="r"><code>library(tidyverse)</code></pre>
+<pre><code>── Attaching packages ─────────────────────────────────────────────────────────────────────────────── tidyverse 1.3.0 ──</code></pre>
+<pre><code>✓ ggplot2 3.3.0     ✓ purrr   0.3.3
+✓ tibble  2.1.3     ✓ dplyr   0.8.4
+✓ tidyr   1.0.2     ✓ stringr 1.4.0
+✓ readr   1.3.1     ✓ forcats 0.5.0</code></pre>
+<pre><code>── Conflicts ────────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
+x dplyr::filter() masks stats::filter()
+x dplyr::lag()    masks stats::lag()</code></pre>
+<pre class="r"><code>library(glmnet); library(doMC); registerDoMC(cores=6)</code></pre>
+<pre><code>Loading required package: Matrix</code></pre>
+<pre><code>
+Attaching package: &#39;Matrix&#39;</code></pre>
+<pre><code>The following objects are masked from &#39;package:tidyr&#39;:
+
+    expand, pack, unpack</code></pre>
+<pre><code>Loaded glmnet 3.0-2</code></pre>
+<pre><code>Loading required package: foreach</code></pre>
+<pre><code>
+Attaching package: &#39;foreach&#39;</code></pre>
+<pre><code>The following objects are masked from &#39;package:purrr&#39;:
+
+    accumulate, when</code></pre>
+<pre><code>Loading required package: iterators</code></pre>
+<pre><code>Loading required package: parallel</code></pre>
+<pre class="r"><code># precipitation data from abby
+X.o &lt;- as.matrix(read_csv(&quot;data/forecasting_data/data/X_obs.csv&quot;))</code></pre>
+<pre><code>Parsed with column specification:
+cols(
+  .default = col_double()
+)</code></pre>
+<pre><code>See spec(...) for full column specifications.</code></pre>
+<pre class="r"><code>X.s &lt;- as.matrix(read_csv(&quot;data/forecasting_data/data/X_sim.csv&quot;))</code></pre>
+<pre><code>Parsed with column specification:
+cols(
+  .default = col_double()
+)
+See spec(...) for full column specifications.</code></pre>
+<pre class="r"><code>Y.o &lt;- as.matrix(read_csv(&quot;data/forecasting_data/data/y_obs.csv&quot;))</code></pre>
+<pre><code>Parsed with column specification:
+cols(
+  `0` = col_double()
+)</code></pre>
+<pre class="r"><code>Y.s &lt;- as.matrix(read_csv(&quot;data/forecasting_data/data/y_sim.csv&quot;))</code></pre>
+<pre><code>Parsed with column specification:
+cols(
+  `0` = col_double(),
+  simulation = col_double()
+)</code></pre>
+<pre class="r"><code># test set
+X.test &lt;- X.o[52:79,] # years 1991-2018
+Y.test &lt;- Y.o[52:79]
+ 
+# train set with only observation data
+X.train0 &lt;- X.o[1:51,] # years 1940-1990
+Y.train0 &lt;- Y.o[1:51]
+
+Y.s.array &lt;- array(0, dim=c(51,1,40)) # use only first 51 rows: corresponding to the same years 1940-1990
+X.s.array &lt;- array(0, dim=c(51,900,40))
+for (i in 1:40){
+  Y.s.array[,,i] &lt;- Y.s[Y.s[,2]==i,1][1:51]
+  X.s.array[,,i] &lt;- X.s[X.s[,901]==i,1:900][1:51,]
+}
+for (i in 1:40){ # standardize (mean 0, sd 1)
+  Y.s.array[,,i] &lt;- scale(Y.s.array[,,i])
+  for (j in 1:900){ # standardize each column for each simulation
+    X.s.array[,j,i] &lt;- scale(X.s.array[,j,i])
+  }
+}
+
+# train set for obs+simulation data
+X.train.p &lt;- X.train0 
+Y.train.p &lt;- Y.train0
+for (i in 1:40){
+  X.train.p &lt;- rbind(X.train.p, X.s.array[,,i])
+  Y.train.p &lt;- c(Y.train.p, Y.s.array[,,i])
+}</code></pre>
+</div>
+<div id="cross-validation-mse-from-lasso" class="section level1">
+<h1>Cross Validation MSE from Lasso</h1>
+<p>For our train set, we have 51 observation data points and 2040 (=40*51) simulation data points with 900 predictors. The lasso, the go-to technique for high-dimensional problem, provides a way to fit an over-determined regression problem. Given a sequence of tuning parameter (<span class="math inline">\(\lambda\)</span>) values , we iteratively fit lasso and empirically choose the best tuning pararmeter value, which minimizes cross-validation mean squared errors.</p>
+<p>The figure below shows the MSE obtained from cross validation; point estiamtes are shown in red dots along with its confidence interval. The lower X axis corresponds to the size of tuning parameter in log scale, and the upper X axis to the number of nonzero parameter estimates with the given tuning parameter.</p>
+<pre class="r"><code># observation data only
+cv.single &lt;- cv.glmnet(X.train0, Y.train0, nfolds=51, grouped=FALSE, 
+                       parallel=TRUE) # observation train data has 51 data points: LOOCV = 51fold
+plot(cv.single)</code></pre>
+<p><img src="figure/stack_thoughts.Rmd/unnamed-chunk-2-1.png" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code># simulation data only
+cv.sim &lt;- cv.glmnet(X.train.p[52:nrow(X.train.p),], Y.train.p[52:length(Y.train.p)], nfolds=5, 
+                       parallel=TRUE) 
+plot(cv.sim)</code></pre>
+<p><img src="figure/stack_thoughts.Rmd/unnamed-chunk-2-2.png" width="672" style="display: block; margin: auto;" /></p>
+<p>By cross validaiton, we calculate MSE over train set, hoping that it can be a good proxy for the MSE over test set (and population). The train set and test set may be heterogeneous, thus to make a model “work well” in the test set, we need the model to “work well” at least within the train set in cross-validation setting.</p>
+<p>The lasso model with observation-only train set has smallest CV MSE when <span class="math inline">\(\log(\lambda)=-1.70\)</span>; the MSE is 0.60. However, the mean cross-validated error has a different shape in simulation-only train set. Here, the smallest CV MSE is 0.98, not much different from 1. Note that when <span class="math inline">\(\lambda\)</span> is large enough, no variable is selected and the MSE becomes 1.</p>
+<p>This makes us think that there may exist a fundamental difference between the joint distribution of <span class="math inline">\((X,Y)\)</span> in observation data and simulation data. Especially, the figure for simulation data suggests that the best model is just a null model–without any predictors. Previously, we thought that the parameter for <span class="math inline">\(i-\)</span>th simulation run is <span class="math inline">\(\beta_i=\beta+\Delta_i\)</span>. This result could be interpreted as there is no such relationship between observation and simulation data: <span class="math inline">\(\beta_i\)</span> is merely <span class="math inline">\(\beta_i=\Delta_i\)</span>; and does not share any information.</p>
+<p>One may think that the difference comes from the difference of the set size: the “one-set” (observation; 51 data points) vs “40-set” (simulations; 2040 data points). To check this, we plotted the CV MSE for each of the 40 simulation runs; a line corresponds to a run in the figure below. Now we have same set size for each of the lines. We see that few of the 40 lines has a minimum fairly smaller than 1. Many of the 40 runs also suggest that the null model is the best model with lasso penalty: <span class="math inline">\(\hat{\beta_i}=\hat{\Delta}_i=0\)</span>. Note that in this individual plot, we are not enforcing that a same set of predictors should be selected, as it was the case for fitting a lasso with all 40 runs.</p>
+<pre class="r"><code># individual simulation runs
+df.temp &lt;- data.frame()
+for (simidx in 1:40){
+  X.train.temp &lt;- X.train.p[(51*simidx+1):(51*(simidx+1)),]
+  Y.train.temp &lt;- Y.train.p[(51*simidx+1):(51*(simidx+1))]
+  cv.sim.temp &lt;- cv.glmnet(X.train.temp, Y.train.temp, nfolds=51, grouped=FALSE, 
+                       parallel=TRUE) # observation train data has 51 data points: LOOCV = 51fold
+  
+  df.temp &lt;- rbind(df.temp,
+                   data.frame(simidx=simidx,
+                              lambda=cv.sim.temp[[&quot;lambda&quot;]],
+                              mse=cv.sim.temp[[&quot;cvm&quot;]]) 
+                   )
+}
+df.temp %&gt;% mutate(loglambda=log(lambda)) %&gt;%
+  ggplot()+geom_line(aes(x=loglambda, y=mse, group=simidx), alpha=0.2)+
+  geom_abline(intercept=1, slope=0, col=&#39;red&#39;)+scale_y_continuous(breaks=c(0.5,1,2,3))+
+  ggtitle(&quot;CV MSE for individual simulation runs&quot;)</code></pre>
+<p><img src="figure/stack_thoughts.Rmd/unnamed-chunk-3-1.png" width="672" style="display: block; margin: auto;" /></p>
+</div>
+<div id="thoughts" class="section level1">
+<h1>Thoughts</h1>
+<p>To summarize, with lasso, we can make a better-than-null prediction when trained on observation-only train set. However, null model is the best model when trained on simulation-only train set and also for many of 40 runs.</p>
+<p>Lasso fits a specific class of models (linearly additive model) with a specific error function (L2) and a specific form of penalty (L1 penalty).</p>
+<p>So, if we are using lasso, we may not leverage much from including simulation data sets in the train set. The joint distribution <span class="math inline">\((X,Y)\)</span> could be quite different.</p>
+<br>
+<p>
+<button type="button" class="btn btn-default btn-workflowr btn-workflowr-sessioninfo" data-toggle="collapse" data-target="#workflowr-sessioninfo" style="display: block;">
+<span class="glyphicon glyphicon-wrench" aria-hidden="true"></span> Session information
+</button>
+</p>
+<div id="workflowr-sessioninfo" class="collapse">
+<pre class="r"><code>sessionInfo()</code></pre>
+<pre><code>R version 3.6.1 (2019-07-05)
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+Running under: macOS Catalina 10.15.4
+
+Matrix products: default
+BLAS:   /Library/Frameworks/R.framework/Versions/3.6/Resources/lib/libRblas.0.dylib
+LAPACK: /Library/Frameworks/R.framework/Versions/3.6/Resources/lib/libRlapack.dylib
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+attached base packages:
+[1] parallel  stats     graphics  grDevices utils     datasets  methods  
+[8] base     
+
+other attached packages:
+ [1] doMC_1.3.6       iterators_1.0.12 foreach_1.4.8    glmnet_3.0-2    
+ [5] Matrix_1.2-18    forcats_0.5.0    stringr_1.4.0    dplyr_0.8.4     
+ [9] purrr_0.3.3      readr_1.3.1      tidyr_1.0.2      tibble_2.1.3    
+[13] ggplot2_3.3.0    tidyverse_1.3.0  workflowr_1.6.0 
+
+loaded via a namespace (and not attached):
+ [1] Rcpp_1.0.4.6     lubridate_1.7.4  lattice_0.20-38  assertthat_0.2.1
+ [5] rprojroot_1.3-2  digest_0.6.25    R6_2.4.1         cellranger_1.1.0
+ [9] backports_1.1.5  reprex_0.3.0     evaluate_0.14    httr_1.4.1      
+[13] pillar_1.4.3     rlang_0.4.5      readxl_1.3.1     rstudioapi_0.11 
+[17] whisker_0.4      rmarkdown_2.1    labeling_0.3     munsell_0.5.0   
+[21] broom_0.5.5      compiler_3.6.1   httpuv_1.5.2     modelr_0.1.6    
+[25] xfun_0.12        pkgconfig_2.0.3  shape_1.4.4      htmltools_0.4.0 
+[29] tidyselect_1.0.0 codetools_0.2-16 fansi_0.4.1      crayon_1.3.4    
+[33] dbplyr_1.4.2     withr_2.1.2      later_1.0.0      grid_3.6.1      
+[37] nlme_3.1-143     jsonlite_1.6.1   gtable_0.3.0     lifecycle_0.2.0 
+[41] DBI_1.1.0        git2r_0.26.1     magrittr_1.5     scales_1.1.0    
+[45] cli_2.0.2        stringi_1.4.6    farver_2.0.3     fs_1.3.2        
+[49] promises_1.1.0   xml2_1.2.2       generics_0.0.2   vctrs_0.2.3     
+[53] tools_3.6.1      glue_1.3.2       hms_0.5.3        yaml_2.2.1      
+[57] colorspace_1.4-1 rvest_0.3.5      knitr_1.28       haven_2.2.0     </code></pre>
+</div>
+</div>
+
+
+<!-- Adjust MathJax settings so that all math formulae are shown using
+TeX fonts only; see
+http://docs.mathjax.org/en/latest/configuration.html.  This will make
+the presentation more consistent at the cost of the webpage sometimes
+taking slightly longer to load. Note that this only works because the
+footer is added to webpages before the MathJax javascript. -->
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    "HTML-CSS": { availableFonts: ["TeX"] }
+  });
+</script>
+
+
+</div>
+</div>
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- tabsets -->
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open')
+  });
+});
+</script>
+
+<!-- code folding -->
+
+<script>
+$(document).ready(function ()  {
+
+    // move toc-ignore selectors from section div to header
+    $('div.section.toc-ignore')
+        .removeClass('toc-ignore')
+        .children('h1,h2,h3,h4,h5').addClass('toc-ignore');
+
+    // establish options
+    var options = {
+      selectors: "h1,h2,h3",
+      theme: "bootstrap3",
+      context: '.toc-content',
+      hashGenerator: function (text) {
+        return text.replace(/[.\\/?&!#<>]/g, '').replace(/\s/g, '_').toLowerCase();
+      },
+      ignoreSelector: ".toc-ignore",
+      scrollTo: 0
+    };
+    options.showAndHide = true;
+    options.smoothScroll = true;
+
+    // tocify
+    var toc = $("#TOC").tocify(options).data("toc-tocify");
+});
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
