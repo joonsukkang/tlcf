@@ -1,0 +1,272 @@
+---
+title: "Single, Stacked, Weighted, Data-Shared"
+author: "Joonsuk Kang"
+date: "2020-05-11"
+output: workflowr::wflow_html
+editor_options:
+  chunk_output_type: console
+---
+
+# Data Preprocessing
+
+We have observation data and 40 sets of simulation data, each with 900 predictors. Observation data is already standardized by each predictor; simulation data is standardized by each predictor by each simulation run of the 40 runs. The response variable is standardized annual precipitation and predictors are geographic information, obtained from Abby.
+
+We split the observation data into two parts: train set with first 51 observations, corresponding to years 1940-1990, and test set with the other 28 observations, corresponding to years 1991-2018. In addition to this train set with 51 observations, we also consider a "observation+simulation" train set, which has the 51 observations plus 2040 (=40*51) data points from simulation, corresponding to the same years 1940-1990.
+
+```{r}
+library(tidyverse)
+
+# precipitation data from abby
+X.o <- as.matrix(read_csv("data/forecasting_data/data/X_obs.csv"))
+X.s <- as.matrix(read_csv("data/forecasting_data/data/X_sim.csv"))
+Y.o <- as.matrix(read_csv("data/forecasting_data/data/y_obs.csv"))
+Y.s <- as.matrix(read_csv("data/forecasting_data/data/y_sim.csv"))
+
+# test set
+X.test <- X.o[52:79,] # years 1991-2018
+Y.test <- Y.o[52:79]
+ 
+# train set with only observation data
+X.train0 <- X.o[1:51,] # years 1940-1990
+Y.train0 <- Y.o[1:51]
+
+Y.s.array <- array(0, dim=c(51,1,40)) # use only first 51 rows: corresponding to the same years 1940-1990
+X.s.array <- array(0, dim=c(51,900,40))
+for (i in 1:40){
+  Y.s.array[,,i] <- Y.s[Y.s[,2]==i,1][1:51]
+  X.s.array[,,i] <- X.s[X.s[,901]==i,1:900][1:51,]
+}
+for (i in 1:40){ # standardize (mean 0, sd 1)
+  Y.s.array[,,i] <- scale(Y.s.array[,,i])
+  for (j in 1:900){ # standardize each column for each simulation
+    X.s.array[,j,i] <- scale(X.s.array[,j,i])
+  }
+}
+
+# train set for obs+simulation data
+X.train.p <- X.train0 
+Y.train.p <- Y.train0
+for (i in 1:40){
+  X.train.p <- rbind(X.train.p, X.s.array[,,i])
+  Y.train.p <- c(Y.train.p, Y.s.array[,,i])
+}
+
+```
+
+
+# Lasso: single (obs) vs stacked (obs+sim)
+
+### Single Lasso: Using observation only
+
+We choose lambda by minimizing leave-one-out cross validation over the obs-only train set (of size 51).
+
+```{r}
+library(glmnet)
+library(doMC); registerDoMC(cores=6)
+cv.single <- cv.glmnet(X.train0, Y.train0, nfolds=51, grouped=FALSE, 
+                       parallel=TRUE) # observation train data has 51 data points: LOOCV = 51fold
+#plot(cv.single)
+predict.single <- predict(cv.single, newx = X.test, s = "lambda.min")
+```
+
+
+### Stacked Lasso: Stack observation and simulation
+
+We choose lambda by minimizing 5-fold cross validation over the stacked (obs+sim) train set. 
+
+```{r}
+cv.stacked <- cv.glmnet(X.train.p, Y.train.p, nfolds=5, 
+                       parallel=TRUE)
+#plot(cv.stacked)
+predict.stacked <- predict(cv.stacked, newx = X.test, s = "lambda.min")
+```
+
+### Single vs Stacked
+
+```{r}
+data.frame(year=1991:2018,
+           single = c(predict.single),
+           stacked = c(predict.stacked),
+           true = Y.test) %>%
+  ggplot()+
+  geom_line(aes(x=year, y=true, col="actual value"))+
+  geom_line(aes(x=year, y=single, col="single lasso"))+
+  geom_line(aes(x=year, y=stacked, col="stacked lasso"))+
+  ylab("")+
+  ggtitle("Prediction over Test Set")
+```
+
+From the figure, the two methods' performance seems quite different. However, it is not numerically.
+
+The mean squared error over prediction set is 1.02 for single lasso, 1.14 for stacked lasso. The performance got worse with stacking. But note that by construction, our expected MSE when always predicting 0 is 1 (Y is standardized to have mean 0, variance 1). In our prediction set, the MSE when always predicting 0 is 1.17, but this deviation from 1 purely comes from randomness. 
+
+This is identical to Abby's result: performance got worse when using stacked train set and the stacked lasso makes close to zero prediction for all.
+
+```{r}
+mean((predict.single - Y.test)^2)
+mean((predict.stacked - Y.test)^2)
+mean((0 - Y.test)^2) # var(y); expected to be 0 (mean 0, sd 1 by construction)
+```
+
+### Lasso with Weights
+
+We assigned different weights depending on the type of data. Each observation data point has weight 1, and we change the weight for each simulation data point from 0 to 1. The "weights" don't need to sum to 1; only their relative values matter.
+
+When all data points have same weight (1), the model is equal to stacked lasso. When we assign 0 weight for simulation data points, the model is equivalent to single lasso. Note that the slight different MSE at simulation weight 0 or 1 comes from randomness of CV; also for weight 0, it was leave-one-out cross validation previously; not we use 5-fold CV.
+
+
+```{r}
+w.grid <- seq(0,1,by=0.05)
+mse.grid <- rep(0,times=length(w.grid))
+for (i in 1:length(w.grid)){
+  ww <- w.grid[i]
+  
+  cv.stacked.w <- cv.glmnet(X.train.p, Y.train.p, nfolds=5,
+                          weights=c(rep(1, times=nrow(X.train0)), 
+                                    rep(ww, times=nrow(X.train.p)-nrow(X.train0))),
+                          parallel=TRUE)
+  predict.stacked.w <- predict(cv.stacked.w, newx = X.test, s = "lambda.min")
+  mse.grid[i] <- mean((predict.stacked.w - Y.test)^2)
+}
+
+data.frame(w=w.grid, mse=mse.grid) %>%
+  ggplot(aes(x=w, y=mse))+geom_line()+geom_point()+
+  xlab("weight for simulation data points")+
+  ggtitle("MSE of Weighted Lasso")
+```
+
+
+### Data Shared Lasso
+
+Fit the "data shared lasso" model from Gross and Tibshirani (2016) *Data Shared Lasso: A novel tool to discover uplift*.
+
+Model: $f(\beta,\alpha,\Delta; \lambda, \sigma, \gamma) =\frac{1}{2}||Y_0-X_0\beta||^2+\frac{1}{2}\sum_{i=1}^G ||Y_i-X_i(\beta+\Delta_i)||^2+\lambda(||\beta||_1+\gamma \sum_{i=1}^G ||\Delta_i||_1)$
+
+$(X_0,Y_0)$ is the observation data, and $\{(X_i,Y_i)\}_{i=1}^G$ is the 40 runs of simulation ($G=40$). We're interested in the parameter in the observation data and want to borrow power from simulation data, assuming that the parameter in each simulation run is of the form $\beta+\Delta_i$ with small $||\Delta_i||$.
+
+This model can be easily estimated with reparametrization: 
+\[
+\tilde{Y}=
+\begin{bmatrix}
+   Y_0\\
+    Y_1 \\
+    Y_2 \\
+    \dots \\
+   X_G 
+\end{bmatrix}
+,
+\tilde{X}=
+\begin{bmatrix}
+   X_0     &0 & 0 & 0 & \dots & 0 \\
+    X_1     & \frac{1}{\gamma}X_1 & 0 & \dots & 0 \\
+    X_2      & 0 & \frac{1}{\gamma}X_2 & \dots & 0 \\
+    \dots \\
+   X_G      & 0 & 0 & \dots &\frac{1}{\gamma}X_G
+\end{bmatrix}
+,
+\tilde{\beta}=
+\begin{bmatrix}
+   \beta \\
+   \gamma\Delta_1 \\
+	\gamma\Delta_2 \\
+   \gamma\Delta_3 \\
+  \dots \\
+    \gamma\Delta_G 
+\end{bmatrix}
+\]
+
+
+```{r}
+library(tictoc)
+gamma.grid <- 10^seq(-3,2,by=0.2)
+mse.grid <- rep(0,times=length(gamma.grid))
+
+# create block diagonal of sim X's
+simblock <- 1
+X.block <- X.train.p[((51*simblock)+1):(51*(simblock+1)),]
+X.train.gamma <- Matrix::bdiag(X.block)
+for (simblock in 2:40){
+  X.block <- X.train.p[((51*simblock)+1):(51*(simblock+1)),]
+  X.train.gamma <- Matrix::bdiag(X.train.gamma, X.block)
+}
+  
+for (i in 1:length(gamma.grid)){
+  
+  gm <- gamma.grid[i]
+
+  # create new design matrix
+  cbind(X.train.p,
+        rbind(matrix(0, nrow=nrow(X.train0), ncol=ncol(X.train.gamma)),
+              X.train.gamma/gm)
+        ) -> X.train.new
+  
+  cbind(X.test, matrix(0, nrow=nrow(X.test), ncol=ncol(X.train.gamma))
+        ) -> X.test.new
+  
+  
+  cv.g <- cv.glmnet(X.train.new, Y.train.p, nfolds=5, 
+                          parallel=TRUE,
+                    standardize=FALSE) 
+  predict.g <- predict(cv.g, newx = X.test.new, s = "lambda.min")
+  mse.grid[i] <- mean((predict.g - Y.test)^2)
+}
+
+data.frame(gamma=gamma.grid, mse=mse.grid) %>%
+  ggplot(aes(x=gamma, y=mse))+geom_line()+geom_point()+
+  scale_x_log10()+
+  xlab("gamma")+
+  ggtitle("MSE of Data Shared Lasso")
+```
+
+
+The performance doesn't show improvement with "data sharing".
+
+There may exist a numerical issue which makes the MSE with small gamma constant at a level different from single lasso (with $\gamma=0$, the result should be identical to single lasso). And for $\gamma=\infty$, we would have a model identical to the stacked lasso because the penalty would enforce $\Delta_i=0$ for all $i$. The dimension of design matrix $X$ is $2,091 \times 36,900$.
+
+
+
+
+# Ridge Regression
+
+Here, we investigated the performance of ridge, and compared with that of lasso.
+
+### Single vs Stacked Ridge
+
+The erformance of single and stacked regression got better with ridge penalty: from 1.02 to 0.93 (single lasso) and from 1.14 to 1.12 (stacked lasso). The improvement may come from nature of the problem that the columns of X are highly correlated and thus sparse solution may not be optimal.
+
+```{r}
+cv.single <- cv.glmnet(X.train0, Y.train0, nfolds=51, grouped=FALSE, alpha=0,
+                       parallel=TRUE) # observation train data has 51 data points: LOOCV = 51fold
+predict.single <- predict(cv.single, newx = X.test, s = "lambda.min"); predict.single.ridge <- predict.single
+cv.stacked <- cv.glmnet(X.train.p, Y.train.p, nfolds=5, alpha=0,
+                       parallel=TRUE)
+predict.stacked <- predict(cv.stacked, newx = X.test, s = "lambda.min")
+
+mean((predict.single - Y.test)^2)
+mean((predict.stacked - Y.test)^2)
+```
+
+### Ridge Regression with Weights
+
+Similary, not using simulation data (weight for simulation data points=0) shows the smallest MSE.
+
+```{r}
+w.grid <- seq(0,1,by=0.05)
+mse.grid <- rep(0,times=length(w.grid))
+for (i in 1:length(w.grid)){
+  ww <- w.grid[i]
+  
+  cv.stacked.w <- cv.glmnet(X.train.p, Y.train.p, nfolds=5, alpha=0,
+                          weights=c(rep(1, times=nrow(X.train0)), 
+                                    rep(ww, times=nrow(X.train.p)-nrow(X.train0))),
+                          parallel=TRUE)
+  predict.stacked.w <- predict(cv.stacked.w, newx = X.test, s = "lambda.min")
+  mse.grid[i] <- mean((predict.stacked.w - Y.test)^2)
+}
+
+data.frame(w=w.grid, mse=mse.grid) %>%
+  ggplot(aes(x=w, y=mse))+geom_line()+geom_point()+
+  xlab("weight for simulation data points")+
+  ggtitle("MSE of Weighted Ridge Regression")
+```
+
