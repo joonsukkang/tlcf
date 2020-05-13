@@ -1,0 +1,392 @@
+---
+title: "Fluctuation Pattern + Anomaly: low-rank matrix factorization approach"
+author: "Joonsuk Kang"
+date: "2020-05-11"
+output: workflowr::wflow_html
+editor_options:
+  chunk_output_type: console
+---
+
+
+# Leveraging Simulation: Learning Fluctuation Patterns
+
+
+Instead of [using simulation data to learn parameter $\beta$](stack_thoughts.html), we can use it to learn the "fluctuation pattern" in $X$. While we have only 51 real data points (in train set), we have 2,040 more in simulation train set.
+
+This approach tackles two key issues in our problem: 1) significant correlation in $X$, 2) restrictive assumption of linearly additive model. 
+
+With singular value decomposition $X=UDV^T=LF$, we can estimate "fluctuation patterns" or "factors" $F=V^T$ and  observations' factor loadings $L=UD$. Intuitively, the fluctuation patterns capture shared geographical fluctuation structure of predictor values. 
+
+
+
+# Detecting Anomalies from Fluctuation Patterns via low-rank matrix factorization
+
+We can concatenate observation and simulation data to leverage simulation: 
+\[
+X=
+\begin{bmatrix}
+   X_0\\
+    X_1 \\
+    X_2 \\
+    \dots \\
+   X_{40}
+\end{bmatrix}
+\]
+where $X_0 \in \mathbb{R}^{N\times p}=\mathbb{R}^{51 \times 900}$ is the observation data and $X_i \in \mathbb{R}^{51 \times 900}$ is the data for $i-$th simultation for $i \in \{1,\dots,40\}$.
+
+The SVD is given as $X=UDV^T$ where $U\in \mathbb{R}^{N\times p}$, $D \in \mathbb{R}^{p \times p}$, and $V \in \mathbb{R}^{p\times p}$. We can interpret SVD as matrix factorization: $X=LF$ with loading matrix $L=UD$ and factor matrix $F=V^T$. 
+
+The rank-$q$ approximation is obtained as $X=\tilde{L}_q\tilde{F}_q+\tilde{E}_q$ where $\tilde{L}_q$ is the first $q$ columns of $L$, $\tilde{F}_q$ is the first $q$ rows of $F$, and $\tilde{E}_q=X-\tilde{L}_q\tilde{F}_q$ is the "anomaly" (residual). 
+
+We can reshape our parameter space as the union of following two sets: 1) The loadings for the $q$ fluctuation patterns and 2) the "anomalies" corresponding to the original $p=900$ predictors.
+
+So, for each observation, we have $q$ loading values and $p=900$ anomalies.
+
+
+
+# Two Benefits
+
+By removing fluctuation patterns in original predictor values, we can detect anomalies which are no longer highly correlated. We use anomalies instead of original predictor values so that it becomes easier to relate a predictor to the response.
+
+Another key advantage is that with the loadings in our model, we can incorporate important structure between predictor and response which are not linearly additive. Note the difference: in our model the response is linear in loadings, which in essence has an effect of complicated non-linear function of predictors.
+
+
+
+# Reality Checks
+
+### Data
+
+```{r}
+library(tidyverse)
+library(glmnet); library(doMC); registerDoMC(cores=6)
+
+# precipitation data from abby
+X.o <- as.matrix(read_csv("data/forecasting_data/data/X_obs.csv"))
+X.s <- as.matrix(read_csv("data/forecasting_data/data/X_sim.csv"))
+Y.o <- as.matrix(read_csv("data/forecasting_data/data/y_obs.csv"))
+Y.s <- as.matrix(read_csv("data/forecasting_data/data/y_sim.csv"))
+
+# test set
+X.test <- X.o[52:79,] # years 1991-2018
+Y.test <- Y.o[52:79]
+ 
+# train set with only observation data
+X.train0 <- X.o[1:51,] # years 1940-1990
+Y.train0 <- Y.o[1:51]
+
+Y.s.array <- array(0, dim=c(51,1,40)) # use only first 51 rows: corresponding to the same years 1940-1990
+X.s.array <- array(0, dim=c(51,900,40))
+for (i in 1:40){
+  Y.s.array[,,i] <- Y.s[Y.s[,2]==i,1][1:51]
+  X.s.array[,,i] <- X.s[X.s[,901]==i,1:900][1:51,]
+}
+for (i in 1:40){ # standardize (mean 0, sd 1)
+  Y.s.array[,,i] <- scale(Y.s.array[,,i])
+  for (j in 1:900){ # standardize each column for each simulation
+    X.s.array[,j,i] <- scale(X.s.array[,j,i])
+  }
+}
+
+# train set for obs+simulation data
+X.train.p <- X.train0 
+Y.train.p <- Y.train0
+for (i in 1:40){
+  X.train.p <- rbind(X.train.p, X.s.array[,,i])
+  Y.train.p <- c(Y.train.p, Y.s.array[,,i])
+}
+
+```
+
+### Covariance of $X$
+
+To use simulation data in estimating fluctuation patterns, we need to verify that the covariance matrix of $X$ in simulation data is similar to the one in observation data, especially considering the frustrating result on stacking/weighting schemes to use simulation data.
+
+
+```{r, fig.height=5, fig.width=5}
+library(pheatmap); library(RColorBrewer)
+breaksList = seq(-1, 1.5, by = 0.1)
+
+# covariance of observation data
+pheatmap(cov(X.train0), cluster_rows=FALSE, cluster_cols=FALSE,
+         breaks=seq(-1,1.5,by=0.1),
+         color = colorRampPalette(rev(brewer.pal(n = 7, name = "RdYlBu")))(length(breaksList)),
+         labels_row="", labels_col = "", main="Heat Map: covariance matrix for obs only")
+# covariance of simulation data
+pheatmap(cov(X.train.p[52:nrow(X.train.p),]), cluster_rows=FALSE, cluster_cols=FALSE,
+         color = colorRampPalette(rev(brewer.pal(n = 7, name = "RdYlBu")))(length(breaksList)),
+         breaks=seq(-1,1.5,by=0.1),
+         labels_row="", labels_col = "", main="Heat Map: covariance matrix for sim only")
+```
+
+The two covariance matrices look similar. Though we need to verify the utility of using simulation data empirically later, it looks fine to proceed.
+
+
+### What fluctuation patterns look like
+
+```{r}
+svd0 <- svd(X.train0) # obs only train set
+svd.p <- svd(X.train.p) # obs+sim train set
+
+mat.L <- svd.p[['u']] %*% diag(svd.p[['d']])
+mat.F.all <- t(svd.p[['v']])
+mat.F0 <- t(svd0[['v']]) # F matrix with obs-only train set
+```
+
+Figure below is the heat map for the first 20 fluctuation patterns. Each row corresponds to one fluctuation pattern and each column to one of the 900 predictors. Patterns (ordered by the size of singular values) start from capturing broader chunks and move on to capturing more detailed patterns. 
+
+```{r}
+# first 20 factors (one row = one fluctuation pattern)
+pheatmap(data.frame(mat.F.all[1:20,]), cluster_rows=FALSE, cluster_cols=FALSE,
+         labels_col = "",
+         main="Heat Map: First 20 Fluctuation Patterns"
+         )
+```
+
+
+From $||X||^2=||UDV^T||^2=||D||^2=\sum_{i}d_i^2$, percentage explained by first $q$ factors: $\frac{\sum_{i\leq q}d_i^2}{\sum_{i}d_i^2}$. Though there are 900 factors, first 10 factors explain 62% of the variations and first 20 explain 77%. 
+
+
+```{r}
+seq.temp <- cumsum(svd.p[['d']]^2)
+seq.temp <- seq.temp/last(seq.temp)
+data.frame(q=1:900,
+           explained = seq.temp) %>%
+  filter(q<=150) %>%
+  ggplot(aes(x=q, y=explained))+geom_line()+geom_point()+
+  ggtitle("Percentage explained by first q patterns")
+```
+
+
+
+# Two-set Predictors to Two-stage Regression
+ 
+We have two sets of predictors: flucutation pattern loadings and anomalies. Here, we consider a two-step procedure. First, we regress loadings on response $Y$. Then, we regress anomalies on the residuals from the first step.
+
+Note that we're now fitting the model with **observation test set only** (simulation data was used for learning fluctuation patterns but is not used here in model fit). 
+
+This approach acknowledges the hierarchy between the two sets and gives a preference to fluctuation loadings.
+
+We consider OLS, lasso, and ridge regression for the first step; lasso and ridge for the (high-dimensional) second step. For lasso/ridge, tuning parameter is chosen to minimize leave-one-out cross validation MSE. 
+
+
+(We can recover loading by $L=XF^T$ from $X=LF$; also calculate loading for test set by $L_{test}=X_{test}F^T$.)
+
+```{r}
+fit.twostep <- function(rank_from=2, rank_to=30, step1, step2, mat.F=mat.F.all){
+  
+    rank.grid <- rank_from:rank_to
+    mse.grid <- rep(0, length(rank.grid))
+    mse.pred1.grid <- rep(0, length(rank.grid))
+    
+    L.train0 <- X.train0 %*% t(mat.F) # use learned fluctuation pattern
+    L.test <- X.test %*% t(mat.F)
+    
+    for (ridx in 1:length(rank.grid)){
+      
+      q <- rank.grid[ridx]
+      
+      Lq.train <- L.train0[,1:q]
+      Fq <- mat.F[1:q,]
+      Eq.train <- X.train0 - Lq.train %*% Fq
+      
+      # Fit: first step
+      if(step1=="ols"){
+        fit.1 <- lm(Y ~ ., data=data.frame(Y=Y.train0, Lq.train))
+        Y.step2 <- fit.1$residuals
+        
+      } else if(step1=="lasso"){
+        fit.1 <- cv.glmnet(Lq.train, Y.train0, nfolds=51, grouped=FALSE, 
+                             parallel=TRUE)
+        Y.step2 <- Y.train0 - predict(fit.1, newx = Lq.train, s = "lambda.min")
+        
+      } else if(step1=="ridge"){
+        fit.1 <- cv.glmnet(Lq.train, Y.train0, nfolds=51, grouped=FALSE, 
+                           alpha=0,
+                             parallel=TRUE)
+        Y.step2 <- Y.train0 - predict(fit.1, newx = Lq.train, s = "lambda.min")
+        
+      }
+      
+      # Fit: second step
+      if(step2=="lasso"){
+        fit.2 <- cv.glmnet(Eq.train, Y.step2, nfolds=51, grouped=FALSE, 
+                             parallel=TRUE)
+        
+      } else if(step2=="ridge"){
+        fit.2 <- cv.glmnet(Eq.train, Y.step2, nfolds=51, grouped=FALSE, 
+                           alpha=0,
+                             parallel=TRUE)
+        
+      }
+      
+      # prediction
+      Lq.test <- L.test[,1:q]
+      Eq.test <- X.test - Lq.test %*% Fq
+    
+      
+      if(step1=="ols"){
+       pred.1 <- predict(fit.1, newdata=data.frame(Lq.test))
+        
+      } else if(step1=="lasso"){
+        pred.1 <- predict(fit.1, newx = Lq.test, s = "lambda.min")
+        
+      } else if(step1=="ridge"){
+        pred.1 <- predict(fit.1, newx = Lq.test, s = "lambda.min")
+      }
+      
+        if(step2=="lasso"){
+        pred.2 <- predict(fit.2, newx = Eq.test, s = "lambda.min")
+        
+      } else if(step2=="ridge"){
+        pred.2 <- predict(fit.2, newx = Eq.test, s = "lambda.min")
+      }
+      
+      pred.twostep <- pred.1+pred.2
+      
+      mse.grid[ridx] <- mean((pred.twostep - Y.test)^2)
+      mse.pred1.grid[ridx] <- mean((pred.1 - Y.test)^2)
+    }
+    
+    return(data.frame(q=rank.grid,
+               mse=mse.grid, mse.pred1=mse.pred1.grid,
+               step1=step1, step2=step2))
+}
+```
+
+
+```{r}
+df.temp <- rbind(
+  fit.twostep(step1="ols", step2="lasso"),
+  fit.twostep(step1="ols", step2="ridge"),
+  fit.twostep(step1="lasso", step2="lasso"),
+  fit.twostep(step1="lasso", step2="ridge"),
+  fit.twostep(step1="ridge", step2="lasso"),
+  fit.twostep(step1="ridge", step2="ridge")
+)
+```
+
+### Results
+
+```{r}
+df.temp %>% mutate(method = paste0(step1, " + ", step2)) %>%
+  ggplot(aes(x=q, y=mse, col=method))+geom_line()+geom_point()+
+  scale_y_continuous(limits=c(0.7,1.6), breaks=seq(0.7,1.6,by=0.1))+
+  geom_abline(slope=0,intercept=1)+
+  ggtitle("Prediction MSE: learning Fluctuation Pattern w/ simulation data")
+```
+
+The lowest MSE over the prediction set is achieved (0.74) when we use "ridge+lasso" method with rank $q=10$ approximation. At $q=10$, "double ridge" (ridge+ridge) also has a low MSE 0.76. Considering that double ridge outperforms ridge+lasso for the neighbors ($q$ around 10), double ridge seems to be the more robust choice.
+
+
+### Compared to learning fluctuation pattern (F) with observation-only train set
+
+```{r}
+df.temp2 <- rbind( # mat.F0 is the estimated matrix F when using only observation train set (51)
+  fit.twostep(step1="ols", step2="lasso", mat.F=mat.F0),
+  fit.twostep(step1="ols", step2="ridge", mat.F=mat.F0),
+  fit.twostep(step1="lasso", step2="lasso", mat.F=mat.F0),
+  fit.twostep(step1="lasso", step2="ridge", mat.F=mat.F0),
+  fit.twostep(step1="ridge", step2="lasso", mat.F=mat.F0),
+  fit.twostep(step1="ridge", step2="ridge", mat.F=mat.F0)
+)
+
+df.temp2 %>% mutate(method = paste0(step1, " + ", step2)) %>%
+  ggplot(aes(x=q, y=mse, col=method))+geom_line()+geom_point()+
+  scale_y_continuous(limits=c(0.7,1.6), breaks=seq(0.7,1.6,by=0.1))+
+  geom_abline(slope=0,intercept=1)+
+  ggtitle("Prediction MSE: learning Fluctuation Pattern w/o simulation data")
+```
+
+The double ridge is the best method here as well, but its performance is much worse when not leveraging the simulation data. The lowest MSE is $0.89$ when $q=10$, much larger compared to 0.76 when using the simulation data to learn the fluctuation pattern.
+
+
+### All the improvement comes from fluctuation patterns, not from anomalies.
+
+It turns out that the "double ridge" is identical to the "ridge on pattern loadings" for the first stage and do not predict anything on the second stage. The contribution of second stage to MSE is nonexistent in most cases.
+
+Here, the `mse` is the MSE of two-step prediction (prediction = prediction from first stage + prediction from second stage) and the `mse.pred1` is the MSE of first-stage-only prediction. The difference is shown in the last column.
+
+```{r}
+df.temp %>% mutate(method = paste0(step1, " + ", step2)) %>%
+  filter(method=="ridge + ridge") %>% mutate(mse_diff = mse-mse.pred1) %>%
+print()
+```
+
+Let's revisit the "ridge + lasso" result. Comparing the double ridge and ridge+lasso, we can say that the contribution of the second-stage lasso is harmful around $q=10$ because double ridge is identical to first-stage ridge used in ridge+lasso procedure.
+
+**However, we shouldn't ignore the potential benefit of the 2nd-step.** In this specific probelm, the best model defaulted on the second step. But it does not necessarily exclude the possibility that an anomaly can have a significant effect on the response.
+
+
+### Then, how about just single regression?
+
+If we put both patterns and anomalies into one predictor set and run a single regression, the model performance becomes much worse. We find that the two-step approach has an advantage because we are utilizing the fact that each learned fluctuation patterns would be more relevant than each of the anomalies.
+
+That being said, we could still benefit from integrating this two-stage regression into a single regression if we encode this hierarchy of the predictor sets. 
+
+
+```{r}
+
+  rank.grid <- 2:150    
+  mse.lasso.grid <- rep(0, length(rank.grid))
+  mse.ridge.grid <- rep(0, length(rank.grid))
+  mat.F <- mat.F.all
+  
+  L.train0 <- X.train0 %*% t(mat.F) # use learned fluctuation pattern
+  L.test <- X.test %*% t(mat.F)
+  
+  for (ridx in 1:length(rank.grid)){
+    
+    q <- rank.grid[ridx]
+    
+    Lq.train <- L.train0[,1:q]
+    Fq <- mat.F[1:q,]
+    Eq.train <- X.train0 - Lq.train %*% Fq
+    
+    fit.single.ridge <- cv.glmnet(cbind(Lq.train, Eq.train), Y.train0, nfolds=51, grouped=FALSE, 
+                            alpha=0,
+                            parallel=TRUE)
+    fit.single.lasso <- cv.glmnet(cbind(Lq.train, Eq.train), Y.train0, nfolds=51, grouped=FALSE, 
+                            parallel=TRUE)
+    # prediction
+    Lq.test <- L.test[,1:q]
+    Eq.test <- X.test - Lq.test %*% Fq
+    
+ 
+    pred.single.ridge <- predict(fit.single.ridge, newx = cbind(Lq.test, Eq.test), s = "lambda.min")
+    pred.single.lasso <- predict(fit.single.lasso, newx = cbind(Lq.test, Eq.test), s = "lambda.min")
+  
+    
+    mse.ridge.grid[ridx] <- mean((pred.single.ridge - Y.test)^2)
+    mse.lasso.grid[ridx] <- mean((pred.single.lasso - Y.test)^2)
+
+  }
+  
+  ggplot()+
+    geom_line(aes(x=rank.grid, y=mse.ridge.grid, col="single ridge"))+
+    geom_line(aes(x=rank.grid, y=mse.lasso.grid, col="single lasso"))+
+    xlab("q")+ylab("mse")+
+    geom_abline(slope=0,intercept=1)+
+    ggtitle("Prediction MSE: single-step results")
+
+```
+
+
+
+### Decorrealted Anomalies
+
+Under the empirically chosen $q=10$, we can check that the anomalies (residual $E_q$ from rank-$q$ matrix factorization) over the observation train set are no longer severely correlated.
+
+```{r}
+L.train0 <- X.train0 %*% t(mat.F.all) # use learned fluctuation pattern
+q <- 10
+Lq.train <- L.train0[,1:q]
+Fq <- mat.F[1:q,]
+Eq.train <- X.train0 - Lq.train %*% Fq
+
+# covariance of observation data
+pheatmap(cov(Eq.train), cluster_rows=FALSE, cluster_cols=FALSE,
+         breaks=seq(-1,1.5,by=0.1),
+         color = colorRampPalette(rev(brewer.pal(n = 7, name = "RdYlBu")))(length(breaksList)),
+         labels_row="", labels_col = "", main="Heat Map: covariance matrix for anomalies (obs train set)")
+
+```
