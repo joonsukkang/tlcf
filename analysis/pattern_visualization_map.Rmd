@@ -1,0 +1,158 @@
+---
+title: "Fluctuation Pattern over the map"
+author: "Joonsuk Kang"
+date: "2020-05-11"
+output: workflowr::wflow_html
+editor_options:
+  chunk_output_type: console
+---
+
+## Introduction
+
+Here we plot the first 10 fluctuation patterns, learned using observation and simulation data, over the world map. 
+
+For a given fluctuation pattern, we have values corresponding to the 900 predictors, each of which is the standardized tempreature from (longitude, latitude, month) where longitude $\in [85,275]$, latitude $\in [-55,65]$, and month $\in \{July, August, September, October\}$.
+
+For each factor, we first show one figure for month-averaged patterns and then four month-specific patterns. In general, the four month-specific figures are consistent with each other, thus also with the month-averaged figure.
+
+Figures are presented in two methods: one set of figuers in tile plots and the other in dots. The values for a fluctuation pattern are not sparse, unlike the estimated coefficients from lasso. Thus, to hightlight the continuous variation across locations, figures are shown in tile versions in addition to point plots.
+
+
+
+## Data
+
+```{r}
+library(tidyverse)
+library(glmnet); library(doMC); registerDoMC(cores=6)
+
+# precipitation data from abby
+X.o <- as.matrix(read_csv("data/forecasting_data/data/X_obs.csv"))
+X.s <- as.matrix(read_csv("data/forecasting_data/data/X_sim.csv"))
+Y.o <- as.matrix(read_csv("data/forecasting_data/data/y_obs.csv"))
+Y.s <- as.matrix(read_csv("data/forecasting_data/data/y_sim.csv"))
+
+# index 
+whereisit <- read_csv("data/maps_data/sst_loc.csv")
+whereisit %>% mutate(month=factor(month),) -> whereisit
+
+# test set
+X.test <- X.o[52:79,] # years 1991-2018
+Y.test <- Y.o[52:79]
+ 
+# train set with only observation data
+X.train0 <- X.o[1:51,] # years 1940-1990
+Y.train0 <- Y.o[1:51]
+
+Y.s.array <- array(0, dim=c(51,1,40)) # use only first 51 rows: corresponding to the same years 1940-1990
+X.s.array <- array(0, dim=c(51,900,40))
+for (i in 1:40){
+  Y.s.array[,,i] <- Y.s[Y.s[,2]==i,1][1:51]
+  X.s.array[,,i] <- X.s[X.s[,901]==i,1:900][1:51,]
+}
+for (i in 1:40){ # standardize (mean 0, sd 1)
+  Y.s.array[,,i] <- scale(Y.s.array[,,i])
+  for (j in 1:900){ # standardize each column for each simulation
+    X.s.array[,j,i] <- scale(X.s.array[,j,i])
+  }
+}
+
+# train set for obs+simulation data
+X.train.p <- X.train0 
+Y.train.p <- Y.train0
+for (i in 1:40){
+  X.train.p <- rbind(X.train.p, X.s.array[,,i])
+  Y.train.p <- c(Y.train.p, Y.s.array[,,i])
+}
+
+# SVD
+svd.p <- svd(X.train.p) # obs+sim train set
+mat.F.all <- t(svd.p[['v']])
+
+```
+
+
+
+## Figures: tiles
+
+
+```{r}
+library(maps); library(mapproj); library(RColorBrewer)
+map <- map_data('world2')
+
+for (factor.idx in 1:10){
+
+pattern <- mat.F.all[factor.idx,]
+df.fig <- cbind(whereisit, data.frame(pattern=pattern))
+
+# averaged over month
+df.fig %>% group_by(lat, lon) %>%
+  summarise(pattern=mean(pattern)) %>%
+  mutate(size=abs(pattern),
+         sign=factor(sign(pattern), levels=c(1,-1), labels=c('positive', 'negative')))  %>%
+  ggplot()+
+  geom_tile(aes(x=lon, y=lat, fill=pattern))+
+  scale_fill_distiller(palette="RdBu")+
+  geom_polygon(aes(x=long, y=lat, group = group), col='black', fill=NA, data=map) +
+  coord_map(xlim = c(80, 280),ylim = c(-60, 70))+
+    ggtitle(paste0("Fluctuation Pattern", " #", factor.idx, ": averaged over Aug-Sept"))-> temp.fig
+
+print(temp.fig)
+
+# by month
+
+df.fig %>% 
+  mutate(size=abs(pattern),
+         sign=factor(sign(pattern), levels=c(1,-1), labels=c('positive', 'negative')))  %>%
+  ggplot()+
+    geom_tile(aes(x=lon, y=lat, fill=pattern))+
+    scale_fill_distiller(palette="RdBu")+
+    geom_polygon(aes(x=long, y=lat, group = group), col='black', fill=NA, data=map) +
+    scale_size_continuous(range=c(0,1))+
+      facet_grid(~month)+coord_map(xlim = c(80, 280),ylim = c(-60, 70))+
+    ggtitle(paste0("Fluctuation Pattern", " #", factor.idx, ": by month")) -> temp.fig
+
+print(temp.fig)
+
+}
+  
+```
+
+
+
+## Figures: points
+
+```{r}
+for (factor.idx in 1:10){
+
+pattern <- mat.F.all[factor.idx,]
+df.fig <- cbind(whereisit, data.frame(pattern=pattern))
+
+# averaged over month
+df.fig %>% group_by(lat, lon) %>%
+  summarise(pattern=mean(pattern)) %>%
+  mutate(size=abs(pattern),
+         sign=factor(sign(pattern), levels=c(1,-1), labels=c('positive', 'negative')))  %>%
+  ggplot()+
+  geom_point(aes(x=lon, y=lat, size=size, col=sign))+
+  geom_polygon(aes(x=long, y=lat, group = group), col='black', fill=NA, data=map) +
+  scale_size_continuous(range=c(0,1))+coord_map(xlim = c(80, 280),ylim = c(-60, 70))+
+    ggtitle(paste0("Fluctuation Pattern", " #", factor.idx, ": averaged over Aug-Sept")) -> temp.fig
+  
+print(temp.fig)
+
+# by month
+df.fig %>% 
+  mutate(size=abs(pattern),
+         sign=factor(sign(pattern), levels=c(1,-1), labels=c('positive', 'negative')))  %>%
+  ggplot()+
+    geom_point(aes(x=lon, y=lat, size=size, col=sign))+
+    geom_polygon(aes(x=long, y=lat, group = group), col='black', fill=NA, data=map) +
+    scale_size_continuous(range=c(0,1))+
+    facet_grid(~month)+coord_map(xlim = c(80, 280),ylim = c(-60, 70))+
+    ggtitle(paste0("Fluctuation Pattern", " #", factor.idx, ": by month")) -> temp.fig
+
+print(temp.fig)
+
+}
+  
+```
