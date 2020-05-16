@@ -9,11 +9,13 @@ editor_options:
 
 ## Introduction
 
-Here we plot the first 10 fluctuation patterns, learned using observation and simulation data, over the world map. 
+Here we plot the first 30 fluctuation patterns, learned using observation and simulation data, over the world map. 
 
 For a given fluctuation pattern, we have values corresponding to the 900 predictors, each of which is the standardized tempreature from (longitude, latitude, month) where longitude $\in [85,275]$, latitude $\in [-55,65]$, and month $\in \{July, August, September, October\}$.
 
 For each factor, we first show one figure for month-averaged patterns and then four month-specific patterns. In general, the four month-specific figures are consistent with each other, thus also with the month-averaged figure.
+
+This temporal consistency is surprising because when identifying patterns (PCA) we did not encode any information about the four predictors corresponding to the same geographical location. Also surprising is the smoothness over locations: we did not utilize any spatial structure in PCA, either.
 
 Figures are presented in two methods: one set of figuers in tile plots and the other in dots. The values for a fluctuation pattern are not sparse, unlike the estimated coefficients from lasso. Thus, to hightlight the continuous variation across locations, figures are shown in tile versions in addition to point plots.
 
@@ -75,11 +77,11 @@ mat.F.all <- t(svd.p[['v']])
 ## Figures: tiles
 
 
-```{r}
+```{r figtiles}
 library(maps); library(mapproj); library(RColorBrewer)
 map <- map_data('world2')
 
-for (factor.idx in 1:10){
+for (factor.idx in 1:30){
 
 pattern <- mat.F.all[factor.idx,]
 df.fig <- cbind(whereisit, data.frame(pattern=pattern))
@@ -121,8 +123,8 @@ print(temp.fig)
 
 ## Figures: points
 
-```{r}
-for (factor.idx in 1:10){
+```{r figpoints}
+for (factor.idx in 1:30){
 
 pattern <- mat.F.all[factor.idx,]
 df.fig <- cbind(whereisit, data.frame(pattern=pattern))
