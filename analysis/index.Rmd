@@ -8,6 +8,55 @@ editor_options:
   chunk_output_type: console
 ---
 
+
+## Learning Fluctuation Patterns with Simulation
+
+:::: {style="display: flex;"}
+::: {style="min-width: 300px; max-width: 300px"}
+<img src="https://joonsukkang.github.io/tlcf/figure/pattern_anomaly.Rmd/unnamed-chunk-8-1.png" width="400">
+
+:::
+::: {}
++ Fluctuation Pattern + Anomaly: low-rank matrix factorization approach: [pattern_anomaly](pattern_anomaly.html)
+  + Use simulation to learn principal components ("pattern") of X
+  + Fit a model with patterns: principal components regression; and make predictions using the fitted model
+  + With an adequate q, we can achieve better prediction performance
+
++ Fluctuation Pattern over the map: [pattern_visualization_map](pattern_visualization_map.html)
+  + Visualize the first 30 patterns over the map
+  + The pattern exhibits temporal consistency and spatial smoothness
+:::
+::::
+
+
+
+## Single, Stacked, Weighted, Data-Shared
+
+:::: {style="display: flex;"}
+::: {style="min-width: 300px; max-width: 300px"}
+<img src="https://joonsukkang.github.io/tlcf/figure/stack_weighted_datashared.Rmd/unnamed-chunk-4-1.png" width="400">
+
+:::
+::: {}
++ Single, Stacked, Weighted, Data-Shared : [stack_weighted_datashared](stack_weighted_datashared.html)
+  + Single lasso (only using observation data) has MSE 1.02042
+  + Stacked lasso (concatenating data from observation and simulation) is a bit worse: MSE 1.140512
+  + However, predicting always 0 would achieve MSE 1 in expectation (response is standardized to have mean 0, var 1)
+  + Assigning different weights to simulation or fitting data-shared lasso doesn't improve the result
+
++ Thoughts on stacked/weighted/data-sharing lasso: [stack_thoughts](stack_thoughts.html)
+  + The joint distribution of (X,Y) in observation data may be quite different from the joint distribution (X,Y) in simulation
+:::
+::::
+
+
+
+
+
+
+
+
+
 # AltMin Algorithm
 
 ### AltMin Simulation and Thoughts on Banerjee paper: [banerjee](banerjee.html)
