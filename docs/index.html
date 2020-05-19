@@ -332,7 +332,7 @@ div.section {
 <div class="tab-content">
 <div id="summary" class="tab-pane fade in active">
 <p>
-<strong>Last updated:</strong> 2020-03-29
+<strong>Last updated:</strong> 2020-05-19
 </p>
 <p>
 <strong>Checks:</strong> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> 2 <span class="glyphicon glyphicon-exclamation-sign text-danger" aria-hidden="true"></span> 0
@@ -363,20 +363,31 @@ This reproducible <a href="http://rmarkdown.rstudio.com">R Markdown</a> analysis
 <div class="panel panel-default">
 <div class="panel-heading">
 <p class="panel-title">
-<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRepositoryversionstrongahrefhttpsgithubcomjoonsukkangtlcftreef6873659d37f25437a3bbb680086be1a89f0127ftargetblankf687365a"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Repository version:</strong> <a href="https://github.com/joonsukkang/tlcf/tree/f6873659d37f25437a3bbb680086be1a89f0127f" target="_blank">f687365</a> </a>
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRepositoryversionstrongahrefhttpsgithubcomjoonsukkangtlcftreefb81ede1071bea767ffebdbd2246c9db3bb5ed92targetblankfb81edea"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Repository version:</strong> <a href="https://github.com/joonsukkang/tlcf/tree/fb81ede1071bea767ffebdbd2246c9db3bb5ed92" target="_blank">fb81ede</a> </a>
 </p>
 </div>
-<div id="strongRepositoryversionstrongahrefhttpsgithubcomjoonsukkangtlcftreef6873659d37f25437a3bbb680086be1a89f0127ftargetblankf687365a" class="panel-collapse collapse">
+<div id="strongRepositoryversionstrongahrefhttpsgithubcomjoonsukkangtlcftreefb81ede1071bea767ffebdbd2246c9db3bb5ed92targetblankfb81edea" class="panel-collapse collapse">
 <div class="panel-body">
 <p>
 Great! You are using Git for version control. Tracking code development and connecting the code version to the results is critical for reproducibility. The version displayed above was the version of the Git repository at the time these results were generated. <br><br> Note that you need to be careful to ensure that all relevant files for the analysis have been committed to Git prior to generating the results (you can use <code>wflow_publish</code> or <code>wflow_git_commit</code>). workflowr only checks the R Markdown file, but you know if there are other scripts or data files that it depends on. Below is the status of the Git repository when the results were generated:
 </p>
 <pre><code>
 Ignored files:
+    Ignored:    .Rhistory
     Ignored:    .Rproj.user/
 
 Untracked files:
+    Untracked:  analysis/index_updates.Rmd
+    Untracked:  analysis/origin_bimodality.Rmd
+    Untracked:  analysis/pattern_anomaly_tempcodes.Rmd
+    Untracked:  analysis/q_adaptivity.Rmd
     Untracked:  analysis/temp.Rmd
+    Untracked:  analysis/update_20200420.Rmd
+    Untracked:  code/altmin_fixX.m
+    Untracked:  code/run_altmin_bimodality.m
+    Untracked:  data/forecasting_data/
+    Untracked:  data/maps_data/
+    Untracked:  output/errors_p100m14_fixX.csv
     Untracked:  test.txt
 
 Unstaged changes:
@@ -419,6 +430,40 @@ Message
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+<a href="https://github.com/joonsukkang/tlcf/blob/fb81ede1071bea767ffebdbd2246c9db3bb5ed92/analysis/index.Rmd" target="_blank">fb81ede</a>
+</td>
+<td>
+Joonsuk Kang
+</td>
+<td>
+2020-05-19
+</td>
+<td>
+Update index
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+<a href="https://rawcdn.githack.com/joonsukkang/tlcf/1885427bb0a0b9b5a75d622c5326fc5c1b7e213b/docs/index.html" target="_blank">1885427</a>
+</td>
+<td>
+Joonsuk Kang
+</td>
+<td>
+2020-03-29
+</td>
+<td>
+Build site.
+</td>
+</tr>
 <tr>
 <td>
 Rmd
@@ -474,6 +519,52 @@ Start workflowr project.
 </table>
 </div>
 <hr>
+</div>
+</div>
+</div>
+<div id="learning-fluctuation-patterns-with-simulation" class="section level2">
+<h2>Learning Fluctuation Patterns with Simulation</h2>
+<div style="display: flex;">
+<div style="min-width: 300px; max-width: 300px">
+<p><img src="https://joonsukkang.github.io/tlcf/figure/pattern_anomaly.Rmd/unnamed-chunk-8-1.png" width="400"></p>
+</div>
+<div>
+<ul>
+<li>Fluctuation Pattern + Anomaly: low-rank matrix factorization approach: <a href="pattern_anomaly.html">pattern_anomaly</a>
+<ul>
+<li>Use simulation to learn principal components (“pattern”) of X</li>
+<li>Fit a model with patterns: principal components regression; and make predictions using the fitted model</li>
+<li>With an adequate q, we can achieve better prediction performance</li>
+</ul></li>
+<li>Fluctuation Pattern over the map: <a href="pattern_visualization_map.html">pattern_visualization_map</a>
+<ul>
+<li>Visualize the first 30 patterns over the map</li>
+<li>The pattern exhibits temporal consistency and spatial smoothness</li>
+</ul></li>
+</ul>
+</div>
+</div>
+</div>
+<div id="single-stacked-weighted-data-shared" class="section level2">
+<h2>Single, Stacked, Weighted, Data-Shared</h2>
+<div style="display: flex;">
+<div style="min-width: 300px; max-width: 300px">
+<p><img src="https://joonsukkang.github.io/tlcf/figure/stack_weighted_datashared.Rmd/unnamed-chunk-4-1.png" width="400"></p>
+</div>
+<div>
+<ul>
+<li>Single, Stacked, Weighted, Data-Shared : <a href="stack_weighted_datashared.html">stack_weighted_datashared</a>
+<ul>
+<li>Single lasso (only using observation data) has MSE 1.02042</li>
+<li>Stacked lasso (concatenating data from observation and simulation) is a bit worse: MSE 1.140512</li>
+<li>However, predicting always 0 would achieve MSE 1 in expectation (response is standardized to have mean 0, var 1)</li>
+<li>Assigning different weights to simulation or fitting data-shared lasso doesn’t improve the result</li>
+</ul></li>
+<li>Thoughts on stacked/weighted/data-sharing lasso: <a href="stack_thoughts.html">stack_thoughts</a>
+<ul>
+<li>The joint distribution of (X,Y) in observation data may be quite different from the joint distribution (X,Y) in simulation</li>
+</ul></li>
+</ul>
 </div>
 </div>
 </div>
